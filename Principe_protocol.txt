@@ -1,1 +1,10 @@
-Ajouter le fonctionnement du protocole que l'on aura créer
+On doit faire une RFC sous forme pdf a rendre
+
+C'est quoi RFC ?
+
+
+Les RFC détaillent le protocole.
+la RFC se dois de préciser la syntaxe et la grammaire du protocole, les détails d'implémentation étant spécifié sous forme de conseils (parfois appuyés)
+n'importe quel codeur peux en suivant à la lettre une RFC, réaliser une application implémentant le protocole.
+
+En bref on explique comment ça marche
