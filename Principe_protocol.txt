@@ -8,3 +8,35 @@ la RFC se dois de préciser la syntaxe et la grammaire du protocole, les détails 
 n'importe quel codeur peux en suivant à la lettre une RFC, réaliser une application implémentant le protocole.
 
 En bref on explique comment ça marche
+
+
+Serveur : 
+Boucle
+Socket = recu(bb)
+If bb!=null { 
+If new pseudo : rentre (pseudo,socket) dans la map
+If message all: envoie message à tous (sauf socket)
+If list client : renvoie la list client(à socket)
+}
+
+
+Client :
+
+
+Rentrer pseudo.
+Envoie pseudo serveur
+Boucle
+Demande que veux tu faire?
+scan(line)a recu||wait(0.1second)
+If line!=null{
+if-List client  : /getList
+if-Message client : /w nomduclient
+if-Message all : /all
+Else mauvais format
+}
+test reception:
+If packet recu!=null:
+If message autre client :Thread lire le message break;
+If confirmation client : connection client break;
+If list client : thread affichage liste break;
+Else mauvais format
