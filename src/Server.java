@@ -265,18 +265,34 @@ public class Server {
 //        }
 //    }
 
+    private ByteBuffer encodeE_LIST_CLIENT_CO() {
+        // TODO -> Change valeur 10
+        ByteBuffer byteBuffer = ByteBuffer.allocate(10);
+
+        return byteBuffer;
+    }
+
     private String decodeE_PSEUDO(ByteBuffer byteBuffer) {
         if (byteBuffer.remaining() < Integer.BYTES) {
             System.err.println("Missing size of name");
             return null;
         }
         return UTF8_charset.decode(byteBuffer).toString();
-
-
 //                if(size >= byteBuffer.remaining()){
 //                    System.err.println("Wrong size of");
 //                    return;
 //                }
+    }
+
+    private void decodeM_ALL() {
+
+    }
+
+    private ByteBuffer encodeM_ALL() {
+        // TODO -> Change valeur 10
+        ByteBuffer byteBuffer = ByteBuffer.allocate(10);
+
+        return byteBuffer;
     }
 }
 
