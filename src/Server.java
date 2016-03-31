@@ -1,23 +1,36 @@
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 public class Server {
 
     private final static int BUFF_SIZE = 1024;
+
+    /* Codes pour la reception de paquets */
     private final static byte E_PSEUDO = 1;
     private final static byte D_PSEUDO = 6;
     private final static byte D_LIST_CLIENT_CO = 7;
+
+    /* Code pour l'envoie de paquets */
+    private final static byte E_LIST_CLIENT_CO = 8;
+
+    /* Concerne l'envoie et la reception */
+    private final static byte M_ALL = 9;
 
 //    private final static int TIME_OUT = 1000;
 
     //    private final Map<SocketChannel, Long> clientTimer = new HashMap<>();
 //    private final static byte R_LIST_CLIENT_CO = 8;
-    private final static byte M_ALL = 9;
+
     private final static Charset UTF8_charset = Charset.forName("UTF8");
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
@@ -234,6 +247,11 @@ public class Server {
 
                 break;
             case M_ALL:
+//                decodeM_ALL(byteBuffer);
+//                ByteBuffer tempo = encodeM_ALL();
+                // Send to each socketChannel connected
+                // Si socket en mode read -> attendre fin de la lecture et envoyer
+
                 break;
             default:
                 System.err.println("Error : Unkown code " + b);
@@ -273,6 +291,7 @@ public class Server {
     }
 
     private String decodeE_PSEUDO(ByteBuffer byteBuffer) {
+        // TODO
         if (byteBuffer.remaining() < Integer.BYTES) {
             System.err.println("Missing size of name");
             return null;
@@ -284,15 +303,36 @@ public class Server {
 //                }
     }
 
-    private void decodeM_ALL() {
+    private void writeM_ALL(ByteBuffer byteBuffer) {
+        for (Map.Entry<SocketChannel, String> entry : map.entrySet()) {
+            ByteBuffer bbOut = byteBuffer.duplicate();
+            SocketChannel sc = entry.getKey();
+
+            // TODO
+            try {
+                sc.write(bbOut);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
 
     }
-
-    private ByteBuffer encodeM_ALL() {
-        // TODO -> Change valeur 10
-        ByteBuffer byteBuffer = ByteBuffer.allocate(10);
-
-        return byteBuffer;
-    }
+//    private List<String> decodeM_ALL(ByteBuffer byteBuffer) {
+//        // TODO
+//        List<String> list = new ArrayList<>();
+//
+//
+//
+//        return null;
+//    }
+//
+//    private ByteBuffer encodeM_ALL(String s) {
+//        // TODO
+//        ByteBuffer byteBuffer = UTF8_charset.encode(s);
+//
+//
+//        return byteBuffer;
+//    }
 }
 
