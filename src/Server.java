@@ -8,7 +8,6 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 public class Server {
@@ -304,18 +303,30 @@ public class Server {
     }
 
     private void writeM_ALL(ByteBuffer byteBuffer) {
-        for (Map.Entry<SocketChannel, String> entry : map.entrySet()) {
-            ByteBuffer bbOut = byteBuffer.duplicate();
-            SocketChannel sc = entry.getKey();
+//        for (Map. entry : map.keySet()) {
+//            ByteBuffer bbOut = byteBuffer.duplicate();
+//            SocketChannel sc = entry.getKey();
+//
+//
+//            try {
+//                sc.write(bbOut);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
 
-            // TODO
+        // TODO
+        // Peut etre avoir besoin de savoir si la channel est en read ou write
+        map.forEach((key, value) -> {
+            ByteBuffer bbOut = byteBuffer.duplicate();
             try {
-                sc.write(bbOut);
+                key.write(bbOut);
             } catch (IOException e) {
+                System.err.println("Could not write on channel");
                 e.printStackTrace();
             }
-        }
-
+            byteBuffer.rewind(); // Remet la position au début pour une réutilisation
+        });
 
     }
 //    private List<String> decodeM_ALL(ByteBuffer byteBuffer) {
