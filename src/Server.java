@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class Server {
 
-    private final static int BUFF_SIZE = 1024;
+    private final static int BUFF_SIZE = 8;
 
     /* Codes pour la reception de paquets */
     private final static byte E_PSEUDO = 1;
@@ -119,7 +119,6 @@ public class Server {
 //            list.add("WRITE");
 //        return String.join(" and ", list);
 //    }
-
     public static void main(String[] args) throws NumberFormatException, IOException {
         new Server(Integer.parseInt(args[0])).launch();
     }
@@ -184,9 +183,6 @@ public class Server {
             e.printStackTrace();
             System.err.println("Client closed connection before finishing sending");
         }
-
-//        ByteBuffer byteBuffer = ByteBuffer.allocate(BUFF_SIZE);
-
         key.attach(byteBuffer);
         key.interestOps(SelectionKey.OP_WRITE);
     }
@@ -226,6 +222,7 @@ public class Server {
 
     private void processRequest(ByteBuffer byteBuffer, SocketChannel socketChannel) {
 
+        byteBuffer.flip();
         if (byteBuffer.remaining() < Byte.BYTES) {
             return;
         }
@@ -271,6 +268,12 @@ public class Server {
             default:
                 System.err.println("Error : Unkown code " + b);
         }
+        // TODO faire attention a recursivite -> ne devrait pas y avoir de soucis mais on ne sais jamais
+        // // Si le client spam le serveur
+        // -> analyser ce qui reste dans le bytebuffer
+        if (byteBuffer.hasRemaining()) {
+            processRequest(byteBuffer, socketChannel);
+        }
 
     }
 
@@ -309,6 +312,7 @@ public class Server {
         clientMap.forEach((key, value) ->
                 byteBuffer.putInt(value.length())
                         .put(UTF8_charset.encode(value))
+                        .putInt(key.toString().length())
                         .put(UTF8_charset.encode(key.toString()))
         );
         return byteBuffer;
@@ -318,8 +322,8 @@ public class Server {
         final Long[] total = {0L};
         total[0] += Byte.BYTES;
         total[0] += clientMap.size();
-        clientMap.forEach((key, value) -> {
-            long clientSize = Integer.BYTES + value.length() + key.toString().length();
+        clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
+            long clientSize = Integer.BYTES + value.length() + Integer.BYTES + key.toString().length();
             total[0] += clientSize;
         });
         return total[0];
@@ -328,11 +332,17 @@ public class Server {
 
     private String decodeE_PSEUDO(ByteBuffer byteBuffer) {
         // TODO
-//        if (byteBuffer.remaining() < Integer.BYTES) {
-//            System.err.println("Missing size of name");
-//            return null;
-//        }
-        return UTF8_charset.decode(byteBuffer).toString();
+
+        if (byteBuffer.remaining() < Integer.BYTES) {
+            System.err.println("Missing size of name");
+            return null;
+        }
+        int size = byteBuffer.getInt();
+        ByteBuffer tempo = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            tempo.put(byteBuffer.get());
+        }
+        return UTF8_charset.decode(tempo).toString();
 //                if(size >= byteBuffer.remaining()){
 //                    System.err.println("Wrong size of");
 //                    return;
@@ -352,6 +362,19 @@ public class Server {
 //            }
 //        }
 
+        int size = byteBuffer.getInt();
+        ByteBuffer tempo = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            tempo.put(byteBuffer.get());
+        }
+        ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + size);
+        toSend.put(M_ALL)
+                .putInt(size)
+                .put(tempo);
+        writeOneMessageToAll(toSend);
+    }
+
+    private void writeOneMessageToAll(ByteBuffer byteBuffer) {
         // TODO
         // Peut etre avoir besoin de savoir si la channel est en read ou write
         ByteBuffer bbOut = byteBuffer.duplicate();
@@ -359,14 +382,16 @@ public class Server {
         clientMap.forEach((key, value) -> {
             try {
                 System.out.println("DEBUG : bbOut = " + bbOut);
-                key.write(bbOut);
+                while (bbOut.hasRemaining()) {
+                    key.write(bbOut);
+                }
+
             } catch (IOException e) {
                 System.err.println("Could not write on channel");
                 e.printStackTrace();
             }
             bbOut.rewind(); // Remet la position au début pour une réutilisation
         });
-
     }
 
 
