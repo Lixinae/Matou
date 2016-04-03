@@ -20,6 +20,7 @@ public class Server {
     private final static byte D_LIST_CLIENT_CO = 7;
 
     /* Code pour l'envoie de paquets */
+    private final static byte M_CLIENT_TO_CLIENT = 4;
     private final static byte E_LIST_CLIENT_CO = 8;
 
     /* Concerne l'envoie et la reception */
@@ -338,39 +339,36 @@ public class Server {
             return null;
         }
         int size = byteBuffer.getInt();
+        if (byteBuffer.remaining() < size) {
+            System.err.println("The message is incomplete");
+            return null;
+        }
         ByteBuffer tempo = ByteBuffer.allocate(size);
         for (int i = 0; i < size; i++) {
             tempo.put(byteBuffer.get());
         }
         return UTF8_charset.decode(tempo).toString();
-//                if(size >= byteBuffer.remaining()){
-//                    System.err.println("Wrong size of");
-//                    return;
-//                }
+
     }
 
     private void writeM_ALL(ByteBuffer byteBuffer) {
-//        for (SocketChannel entry : clientMap.keySet()) {
-//            ByteBuffer bbOut = byteBuffer.duplicate();
-//            SocketChannel sc = entry.getKey();
-//
-//
-//            try {
-//                sc.write(bbOut);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-
-        int size = byteBuffer.getInt();
-        ByteBuffer tempo = ByteBuffer.allocate(size);
-        for (int i = 0; i < size; i++) {
-            tempo.put(byteBuffer.get());
+        int sizeName = byteBuffer.getInt();
+        ByteBuffer name = ByteBuffer.allocate(sizeName);
+        for (int i = 0; i < sizeName; i++) {
+            name.put(byteBuffer.get());
         }
-        ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + size);
-        toSend.put(M_ALL)
-                .putInt(size)
-                .put(tempo);
+        int sizeMessage = byteBuffer.getInt();
+        ByteBuffer message = ByteBuffer.allocate(sizeName);
+        for (int i = 0; i < sizeName; i++) {
+            message.put(byteBuffer.get());
+        }
+
+        ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeName + Integer.BYTES + sizeMessage);
+        toSend.put(M_CLIENT_TO_CLIENT)
+                .putInt(sizeName)
+                .put(name)
+                .putInt(sizeMessage)
+                .put(message);
         writeOneMessageToAll(toSend);
     }
 
