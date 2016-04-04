@@ -16,15 +16,16 @@ public class Server {
 
     /* Codes pour la reception de paquets */
     private final static byte E_PSEUDO = 1;
-    private final static byte D_PSEUDO = 6;
+    private final static byte DC_PSEUDO = 6;
     private final static byte D_LIST_CLIENT_CO = 7;
+    private final static byte E_M_ALL = 9;
 
     /* Code pour l'envoie de paquets */
     private final static byte M_CLIENT_TO_CLIENT = 4;
-    private final static byte E_LIST_CLIENT_CO = 8;
+    private final static byte R_LIST_CLIENT_CO = 8;
 
-    /* Concerne l'envoie et la reception */
-    private final static byte M_ALL = 9;
+    private final static byte R_PSEUDO = 10;
+
 
 //    private final static int TIME_OUT = 1000;
 
@@ -231,9 +232,16 @@ public class Server {
         switch (b) {
             case E_PSEUDO:
                 String pseudo = decodeE_PSEUDO(byteBuffer);
-                clientMap.put(socketChannel, pseudo);
+                if (pseudoAlreadyExists(pseudo)) {
+                    sendAnswerPseudoExists(true, socketChannel);
+                } else {
+                    sendAnswerPseudoExists(false, socketChannel);
+                    clientMap.put(socketChannel, pseudo);
+                }
+
+
                 break;
-            case D_PSEUDO:
+            case DC_PSEUDO:
                 clientMap.remove(socketChannel);
                 try {
                     socketChannel.close();
@@ -259,7 +267,7 @@ public class Server {
                 }
 
                 break;
-            case M_ALL:
+            case E_M_ALL:
 //                decodeM_ALL(byteBuffer);
 //                ByteBuffer tempo = encodeM_ALL();
                 // Send to each socketChannel connected
@@ -274,6 +282,31 @@ public class Server {
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
             processRequest(byteBuffer, socketChannel);
+        }
+
+    }
+
+    private boolean pseudoAlreadyExists(String pseudo) {
+        return clientMap.containsValue(pseudo);
+    }
+
+    private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
+        ByteBuffer bbOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+        bbOut.put(R_PSEUDO);
+        if (exists) {
+            bbOut.putInt(1);
+        } else {
+            bbOut.putInt(0);
+
+        }
+        bbOut.flip();
+        try {
+            while (bbOut.hasRemaining()) {
+                socketChannel.write(bbOut);
+            }
+        } catch (IOException e) {
+            System.err.println("Error : Client closed connection before sending finished");
+//            e.printStackTrace();
         }
 
     }
@@ -309,7 +342,7 @@ public class Server {
             return null;
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
-        byteBuffer.put(E_LIST_CLIENT_CO).putInt(clientMap.size());
+        byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
         clientMap.forEach((key, value) ->
                 byteBuffer.putInt(value.length())
                         .put(UTF8_charset.encode(value))
