@@ -1,9 +1,11 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
@@ -51,7 +53,7 @@ public class Server {
     /***
      * Theses methods are here to help understanding the behavior of the selector
      ***/
-
+    /*
     private String interestOpsToString(SelectionKey key) {
         if (!key.isValid()) {
             return "CANCELLED";
@@ -124,16 +126,17 @@ public class Server {
         return String.join(" and ", list);
     }
 
+    */
     public void launch() throws IOException {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
         while (!Thread.interrupted()) {
-            printKeys();
-            System.out.println("Starting select");
+//            printKeys();
+//            System.out.println("Starting select");
             selector.select();
-            System.out.println("Select finished");
-            printSelectedKey();
+//            System.out.println("Select finished");
+//            printSelectedKey();
             processSelectedKeys();
             selectedKeys.clear();
         }
@@ -189,17 +192,7 @@ public class Server {
     }
 
     private void doWrite(SelectionKey key) {
-        SocketChannel clientSocketChannel = (SocketChannel) key.channel();
-        processRequest((ByteBuffer) key.attachment(), clientSocketChannel);
-//        buffSend.flip();
-//        try {
-//            while (buffSend.hasRemaining()) {
-//                clientSocketChannel.write(buffSend);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        key.interestOps(SelectionKey.OP_READ);
+        processRequest(key);
     }
 
     // Lit ce que le socketChannel reçoit et le stock dans le buffer,
@@ -221,9 +214,13 @@ public class Server {
         return null;
     }
 
-    private void processRequest(ByteBuffer byteBuffer, SocketChannel socketChannel) {
+    private void processRequest(SelectionKey key) {
 
-        System.out.println("bytebuffer = " + byteBuffer);
+        SocketChannel socketChannel = (SocketChannel) key.channel();
+        ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
+
+        boolean dc = false;
+//        System.out.println("bytebuffer = " + byteBuffer);
         byteBuffer.flip();
         if (byteBuffer.remaining() < Byte.BYTES) {
             return;
@@ -234,6 +231,10 @@ public class Server {
             case E_PSEUDO:
                 System.out.println("Entering decode pseudo");
                 String pseudo = decodeE_PSEUDO(byteBuffer);
+//                System.out.println(pseudo);
+                if (null == pseudo) {
+                    System.err.println("Could not read name");
+                }
 //                if (pseudoAlreadyExists(pseudo)) {
 //                    sendAnswerPseudoExists(true, socketChannel);
 //                } else {
@@ -241,15 +242,19 @@ public class Server {
 //                    clientMap.put(socketChannel, pseudo);
 //                }
                 clientMap.put(socketChannel, pseudo);
-                System.out.println("client map " + clientMap);
+                System.out.println("Liste des clients connecté " + clientMap.values());
+                System.out.println("Exiting decode pseudo");
                 break;
             case DC_PSEUDO:
+                System.out.println("Entering deconnection");
                 clientMap.remove(socketChannel);
                 try {
                     socketChannel.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                dc = true;
+                key.cancel();
                 break;
             case D_LIST_CLIENT_CO:
                 ByteBuffer bbOut = encodeE_LIST_CLIENT_CO();
@@ -274,7 +279,9 @@ public class Server {
 //                ByteBuffer tempo = encodeM_ALL();
                 // Send to each socketChannel connected
                 // Si socket en mode read -> attendre fin de la lecture et envoyer
+                System.out.println("Entering envoie message all");
                 writeM_ALL(byteBuffer);
+                System.out.println("Exiting envoie message all");
                 break;
             default:
                 System.err.println("Error : Unkown code " + b);
@@ -284,7 +291,10 @@ public class Server {
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
             System.out.println(byteBuffer);
-            processRequest(byteBuffer, socketChannel);
+            processRequest(key);
+        }
+        if (!dc) {
+            key.interestOps(SelectionKey.OP_READ);
         }
 
     }
@@ -350,15 +360,23 @@ public class Server {
             return null;
         }
         int size = byteBuffer.getInt();
+        System.out.println("size = " + size);
         if (byteBuffer.remaining() < size) {
             System.err.println("The message is incomplete");
             return null;
         }
         ByteBuffer tempo = ByteBuffer.allocate(size);
-        for (int i = 0; i < size; i++) {
-            tempo.put(byteBuffer.get());
-        }
-        return UTF8_charset.decode(tempo).toString();
+        System.out.println("tempo = " + tempo);
+//        for (int i = 0; i < size; i++) {
+//            byte b = byteBuffer.get();
+//            tempo.put();
+//        }
+        tempo.put(byteBuffer);
+        System.out.println("tempo apres put" + tempo);
+        tempo.flip();
+        String toReturn = UTF8_charset.decode(tempo).toString();
+        System.out.println("toReturn = " + toReturn);
+        return toReturn;
 
     }
 

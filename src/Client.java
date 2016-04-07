@@ -31,7 +31,8 @@ public class Client {
 		map = new HashMap<>();
 		socket = SocketChannel.open();
 		socket.connect(new InetSocketAddress(host, port));
-		sendPseudo(nickname);
+		socket.configureBlocking(false);
+		sendPseudo();
 	}
 
 	private static void usage() {
@@ -48,10 +49,11 @@ public class Client {
 
 	}
 
-	private void sendPseudo(String nickname) throws IOException {
+	private void sendPseudo() throws IOException {
 		ByteBuffer bNickName = UTF8_charset.encode(nickname);
 		ByteBuffer bNickNameToServer = ByteBuffer.allocate(BUFFER_SIZE);
 		bNickNameToServer.put(E_PSEUDO);
+		bNickNameToServer.putInt(nickname.length());
 		bNickNameToServer.put(bNickName);
 		bNickNameToServer.flip();
 		socket.write(bNickNameToServer);
@@ -85,10 +87,12 @@ public class Client {
 			send();
 			ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
 			if (null == (buffByte = readAll(buffByte, socket))) {
+//				System.out.println("buffByte = null");
 				continue;
 			}
 			buffByte.flip();
 			while(buffByte.hasRemaining()){
+				System.out.println("in while buffByte");
 				Byte b = buffByte.get();
 				switch (b) {
 				case CO_CLIENT_TO_CLIENT:
@@ -123,6 +127,7 @@ public class Client {
 
 	private void send() throws IOException {
 		if (messageAll != null) {
+			System.out.println("Message all in send " + messageAll);
 			ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
 			ByteBuffer buffSendAll = ByteBuffer.allocate(BUFFER_SIZE);
 			buffSendAll.put(M_ALL);
@@ -131,6 +136,7 @@ public class Client {
 			buffSendAll.putInt(buffMessage.capacity());
 			buffSendAll.put(buffMessage);
 			messageAll=null;
+			buffSendAll.flip();
 			socket.write(buffSendAll);
 
 		}
@@ -168,6 +174,7 @@ public class Client {
 						b.append(" ");
 					}
 					messageAll = b.toString();
+					System.out.println("Message all = " + messageAll);
 				}
 				else if(words[0].equals("/commandes")){
 					listeCommande();
