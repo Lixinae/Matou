@@ -15,6 +15,8 @@ public class Client {
 	private String messageAll = null;
 	private String requeteCo = null;
 	private final static Charset UTF8_charset = Charset.forName("UTF8");
+	/*byte pour que le serveur sache qu'on envoie son pseudo*/
+	private final static byte E_PSEUDO = 1;
 	/* connection et accusé de reception de la connection au client */
 	private final static byte CO_CLIENT_TO_CLIENT = 2;
 	private final static byte ACK_CO_CLIENT = 3;
@@ -30,8 +32,15 @@ public class Client {
 		map = new HashMap<>();
 		socket = SocketChannel.open();
 		socket.connect(new InetSocketAddress(host, port));
-		ByteBuffer b = UTF8_charset.encode(nickname);
-		socket.write(b);
+		sendPseudo(nickname);
+	}
+
+	private void sendPseudo(String nickname) throws IOException {
+		ByteBuffer bNickName = UTF8_charset.encode(nickname);
+		ByteBuffer bNickNameToServer = ByteBuffer.allocate(BUFFER_SIZE);
+		bNickNameToServer.put(E_PSEUDO);
+		bNickNameToServer.put(bNickName);
+		socket.write(bNickNameToServer);
 	}
 
 	// Lit ce que le socketChannel reÃ§oit et le stock dans le buffer,
