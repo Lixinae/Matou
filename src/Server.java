@@ -397,7 +397,7 @@ public class Server {
         }
 
         ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeName + Integer.BYTES + sizeMessage);
-        toSend.put(M_CLIENT_TO_CLIENT)
+        toSend.put(E_M_ALL)
                 .putInt(sizeName)
                 .put(name)
                 .putInt(sizeMessage)
