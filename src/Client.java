@@ -183,6 +183,7 @@ public class Client {
                         sep = " ";
                     }
                     messageAll = b.toString();
+                    System.out.println("messageAll = " + messageAll);
                 } else if (words[0].equals("/commandes")) {
                     listeCommande();
                 }

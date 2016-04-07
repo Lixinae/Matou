@@ -46,7 +46,15 @@ public class Server {
         selectedKeys = selector.selectedKeys();
     }
 
+    private static void usage() {
+        System.out.println("java Server 7777");
+    }
+
     public static void main(String[] args) throws NumberFormatException, IOException {
+        if (args.length != 1) {
+            usage();
+            return;
+        }
         new Server(Integer.parseInt(args[0])).launch();
     }
 
