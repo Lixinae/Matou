@@ -384,16 +384,12 @@ public class Server {
         name.flip();
 
         int sizeMessage = byteBuffer.getInt();
-
         ByteBuffer message = ByteBuffer.allocate(sizeMessage);
-
         for (int i = 0; i < sizeMessage; i++) {
-            byte b = byteBuffer.get();
-            message.put(b);
+            message.put(byteBuffer.get());
         }
-
-
         message.flip();
+
         ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeName + Integer.BYTES + sizeMessage);
         toSend.put(E_M_ALL)
                 .putInt(sizeName)
