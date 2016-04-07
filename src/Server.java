@@ -1,11 +1,9 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
@@ -46,83 +44,84 @@ public class Server {
         selectedKeys = selector.selectedKeys();
     }
 
+    public static void main(String[] args) throws NumberFormatException, IOException {
+        new Server(Integer.parseInt(args[0])).launch();
+    }
+
     /***
      * Theses methods are here to help understanding the behavior of the selector
      ***/
 
-//    private String interestOpsToString(SelectionKey key) {
-//        if (!key.isValid()) {
-//            return "CANCELLED";
-//        }
-//        int interestOps = key.interestOps();
-//        ArrayList<String> list = new ArrayList<>();
-//        if ((interestOps & SelectionKey.OP_ACCEPT) != 0)
-//            list.add("OP_ACCEPT");
-//        if ((interestOps & SelectionKey.OP_READ) != 0)
-//            list.add("OP_READ");
-//        if ((interestOps & SelectionKey.OP_WRITE) != 0)
-//            list.add("OP_WRITE");
-//        return String.join("|", list);
-//    }
-//
-//    public void printKeys() {
-//        Set<SelectionKey> selectionKeySet = selector.keys();
-//        if (selectionKeySet.isEmpty()) {
-//            System.out.println("The selector contains no key : this should not happen!");
-//            return;
-//        }
-//        System.out.println("The selector contains:");
-//        for (SelectionKey key : selectionKeySet) {
-//            SelectableChannel channel = key.channel();
-//            if (channel instanceof ServerSocketChannel) {
-//                System.out.println("\tKey for ServerSocketChannel : " + interestOpsToString(key));
-//            } else {
-//                SocketChannel sc = (SocketChannel) channel;
-//                System.out.println("\tKey for Client " + remoteAddressToString(sc) + " : " + interestOpsToString(key));
-//            }
-//        }
-//    }
-//
-//    private String remoteAddressToString(SocketChannel sc) {
-//        try {
-//            return sc.getRemoteAddress().toString();
-//        } catch (IOException e) {
-//            return "???";
-//        }
-//    }
-//
-//    private void printSelectedKey() {
-//        if (selectedKeys.isEmpty()) {
-//            System.out.println("There were not selected keys.");
-//            return;
-//        }
-//        System.out.println("The selected keys are :");
-//        for (SelectionKey key : selectedKeys) {
-//            SelectableChannel channel = key.channel();
-//            if (channel instanceof ServerSocketChannel) {
-//                System.out.println("\tServerSocketChannel can perform : " + possibleActionsToString(key));
-//            } else {
-//                SocketChannel sc = (SocketChannel) channel;
-//                System.out.println("\tClient " + remoteAddressToString(sc) + " can perform : " + possibleActionsToString(key));
-//            }
-//        }
-//    }
-//
-//    private String possibleActionsToString(SelectionKey key) {
-//        if (!key.isValid()) {
-//            return "CANCELLED";
-//        }
-//        ArrayList<String> list = new ArrayList<>();
-//        if (key.isAcceptable())
-//            list.add("ACCEPT");
-//        if (key.isReadable())
-//            list.add("READ");
-//        if (key.isWritable())
-//            list.add("WRITE");
-//        return String.join(" and ", list);
-//    }
-    public static void main(String[] args) throws NumberFormatException, IOException {
-        new Server(Integer.parseInt(args[0])).launch();
+    private String interestOpsToString(SelectionKey key) {
+        if (!key.isValid()) {
+            return "CANCELLED";
+        }
+        int interestOps = key.interestOps();
+        ArrayList<String> list = new ArrayList<>();
+        if ((interestOps & SelectionKey.OP_ACCEPT) != 0)
+            list.add("OP_ACCEPT");
+        if ((interestOps & SelectionKey.OP_READ) != 0)
+            list.add("OP_READ");
+        if ((interestOps & SelectionKey.OP_WRITE) != 0)
+            list.add("OP_WRITE");
+        return String.join("|", list);
+    }
+
+    public void printKeys() {
+        Set<SelectionKey> selectionKeySet = selector.keys();
+        if (selectionKeySet.isEmpty()) {
+            System.out.println("The selector contains no key : this should not happen!");
+            return;
+        }
+        System.out.println("The selector contains:");
+        for (SelectionKey key : selectionKeySet) {
+            SelectableChannel channel = key.channel();
+            if (channel instanceof ServerSocketChannel) {
+                System.out.println("\tKey for ServerSocketChannel : " + interestOpsToString(key));
+            } else {
+                SocketChannel sc = (SocketChannel) channel;
+                System.out.println("\tKey for Client " + remoteAddressToString(sc) + " : " + interestOpsToString(key));
+            }
+        }
+    }
+
+    private String remoteAddressToString(SocketChannel sc) {
+        try {
+            return sc.getRemoteAddress().toString();
+        } catch (IOException e) {
+            return "???";
+        }
+    }
+
+    private void printSelectedKey() {
+        if (selectedKeys.isEmpty()) {
+            System.out.println("There were not selected keys.");
+            return;
+        }
+        System.out.println("The selected keys are :");
+        for (SelectionKey key : selectedKeys) {
+            SelectableChannel channel = key.channel();
+            if (channel instanceof ServerSocketChannel) {
+                System.out.println("\tServerSocketChannel can perform : " + possibleActionsToString(key));
+            } else {
+                SocketChannel sc = (SocketChannel) channel;
+                System.out.println("\tClient " + remoteAddressToString(sc) + " can perform : " + possibleActionsToString(key));
+            }
+        }
+    }
+
+    private String possibleActionsToString(SelectionKey key) {
+        if (!key.isValid()) {
+            return "CANCELLED";
+        }
+        ArrayList<String> list = new ArrayList<>();
+        if (key.isAcceptable())
+            list.add("ACCEPT");
+        if (key.isReadable())
+            list.add("READ");
+        if (key.isWritable())
+            list.add("WRITE");
+        return String.join(" and ", list);
     }
 
     public void launch() throws IOException {
@@ -130,11 +129,11 @@ public class Server {
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
         while (!Thread.interrupted()) {
-//            printKeys();
+            printKeys();
             System.out.println("Starting select");
             selector.select();
             System.out.println("Select finished");
-//            printSelectedKey();
+            printSelectedKey();
             processSelectedKeys();
             selectedKeys.clear();
         }
@@ -224,22 +223,25 @@ public class Server {
 
     private void processRequest(ByteBuffer byteBuffer, SocketChannel socketChannel) {
 
+        System.out.println("bytebuffer = " + byteBuffer);
         byteBuffer.flip();
         if (byteBuffer.remaining() < Byte.BYTES) {
             return;
         }
         byte b = byteBuffer.get();
+        System.out.println("byte = " + b);
         switch (b) {
             case E_PSEUDO:
+                System.out.println("Entering decode pseudo");
                 String pseudo = decodeE_PSEUDO(byteBuffer);
-                if (pseudoAlreadyExists(pseudo)) {
-                    sendAnswerPseudoExists(true, socketChannel);
-                } else {
-                    sendAnswerPseudoExists(false, socketChannel);
-                    clientMap.put(socketChannel, pseudo);
-                }
-
-
+//                if (pseudoAlreadyExists(pseudo)) {
+//                    sendAnswerPseudoExists(true, socketChannel);
+//                } else {
+//                    sendAnswerPseudoExists(false, socketChannel);
+//                    clientMap.put(socketChannel, pseudo);
+//                }
+                clientMap.put(socketChannel, pseudo);
+                System.out.println("client map " + clientMap);
                 break;
             case DC_PSEUDO:
                 clientMap.remove(socketChannel);
@@ -281,6 +283,7 @@ public class Server {
         // // Si le client spam le serveur
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
+            System.out.println(byteBuffer);
             processRequest(byteBuffer, socketChannel);
         }
 
@@ -311,30 +314,6 @@ public class Server {
 
     }
 
-
-//    private List<ClientInfo> getListCo(){
-//        clientMap.
-//        return list;
-//    }
-
-//    private class ClientInfo {
-//        private SocketChannel socketChannel;
-//        private String pseudo;
-//
-//        public ClientInfo(SocketChannel socketChannel, String pseudo){
-//            this.socketChannel = socketChannel;
-//            this.pseudo = pseudo;
-//        }
-//
-//        public SocketChannel getSocketChannel() {
-//            return socketChannel;
-//        }
-//
-//        public String getPseudo() {
-//            return pseudo;
-//        }
-//    }
-
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
         if (size <= 0) {
@@ -362,7 +341,6 @@ public class Server {
         });
         return total[0];
     }
-
 
     private String decodeE_PSEUDO(ByteBuffer byteBuffer) {
         // TODO

@@ -8,24 +8,23 @@ import java.util.Scanner;
 
 public class Client {
 
+	private final static Charset UTF8_charset = Charset.forName("UTF8");
+	/*byte pour que le serveur sache qu'on envoie son pseudo*/
+	private final static byte E_PSEUDO = 1;
+	/* connection et accusï¿½ de reception de la connection au client */
+	private final static byte CO_CLIENT_TO_CLIENT = 2;
+	private final static byte ACK_CO_CLIENT = 3;
+	/* envoie d'un message ou d'un fichier ï¿½ un client */
+	private final static byte M_CLIENT_TO_CLIENT = 4;
+	private final static byte F_CLIENT_TO_CLIENT = 5;
+	/* Concerne l'envoie et la reception */
+	private final static byte M_ALL = 9;
 	private String nickname;
 	private HashMap<String, SocketChannel> map;
 	private SocketChannel socket;
 	private int BUFFER_SIZE = 1024;
 	private String messageAll = null;
 	private String requeteCo = null;
-	private final static Charset UTF8_charset = Charset.forName("UTF8");
-	/*byte pour que le serveur sache qu'on envoie son pseudo*/
-	private final static byte E_PSEUDO = 1;
-	/* connection et accusé de reception de la connection au client */
-	private final static byte CO_CLIENT_TO_CLIENT = 2;
-	private final static byte ACK_CO_CLIENT = 3;
-
-	/* envoie d'un message ou d'un fichier à un client */
-	private final static byte M_CLIENT_TO_CLIENT = 4;
-	private final static byte F_CLIENT_TO_CLIENT = 5;
-	/* Concerne l'envoie et la reception */
-	private final static byte M_ALL = 9;
 
 	public Client(String host, int port, String nickname) throws IOException {
 		this.nickname = nickname;
@@ -35,11 +34,26 @@ public class Client {
 		sendPseudo(nickname);
 	}
 
+	private static void usage() {
+		System.out.println("java Client localhost 7777 MyNickname");
+	}
+
+	public static void main(String[] args) throws IOException {
+		if (args.length != 3) {
+			usage();
+			return;
+		}
+		Client client = new Client(args[0], Integer.parseInt(args[1]), args[2]);
+		client.launch();
+
+	}
+
 	private void sendPseudo(String nickname) throws IOException {
 		ByteBuffer bNickName = UTF8_charset.encode(nickname);
 		ByteBuffer bNickNameToServer = ByteBuffer.allocate(BUFFER_SIZE);
 		bNickNameToServer.put(E_PSEUDO);
 		bNickNameToServer.put(bNickName);
+		bNickNameToServer.flip();
 		socket.write(bNickNameToServer);
 	}
 
@@ -118,7 +132,7 @@ public class Client {
 			buffSendAll.put(buffMessage);
 			messageAll=null;
 			socket.write(buffSendAll);
-			
+
 		}
 		if (requeteCo != null) {
 
@@ -145,6 +159,7 @@ public class Client {
 				boolean end=false;
 				String line = sc.nextLine();
 				String[] words = line.split(" ");
+				System.out.println("word 0 " + words[0]);
 				switch(words[0]){
 				case "/all":
 					messageAll = words[1];
@@ -174,9 +189,9 @@ public class Client {
 	private void listeCommande() {
 		System.out.println("voici les commandes utilisateur :\n"
 				+ "/commande pour lister les commande\n"
-				+ "/all monMessage pour envoyer un message à tout les clients\n"
-				+ "/connect pseudo pour vous connecter au client nommé pseudo\n"
-				+ "/file nomDuFichier pseudo pour envoyer un fichier à pseudo\n"
+				+ "/all monMessage pour envoyer un message ï¿½ tout les clients\n"
+				+ "/connect pseudo pour vous connecter au client nommï¿½ pseudo\n"
+				+ "/file nomDuFichier pseudo pour envoyer un fichier ï¿½ pseudo\n"
 				+ "/exit pour quittez la messagerie");
 	}
 
@@ -187,36 +202,22 @@ public class Client {
 		}
 		Byte b = buffer.get();
 		switch (b) {
-		case CO_CLIENT_TO_CLIENT:
-			String nom = UTF8_charset.decode(buffer).toString();
-			System.out.println(nom
-					+ " souhaiterai entrer en conversation privée avec vous.");
-			map.put(nom, socketChannel);
-		case ACK_CO_CLIENT:
+			case CO_CLIENT_TO_CLIENT:
+				String nom = UTF8_charset.decode(buffer).toString();
+				System.out.println(nom
+						+ " souhaiterai entrer en conversation privï¿½e avec vous.");
+				map.put(nom, socketChannel);
+			case ACK_CO_CLIENT:
 
-		case M_CLIENT_TO_CLIENT:
+			case M_CLIENT_TO_CLIENT:
 
-		case F_CLIENT_TO_CLIENT:
+			case F_CLIENT_TO_CLIENT:
 
-		case M_ALL:
+			case M_ALL:
 
-		default:
-			throw new IllegalStateException("wrong byte read");
+			default:
+				throw new IllegalStateException("wrong byte read");
 		}
-	}
-
-	private static void usage() {
-		System.out.println("java Client localhost 7777 MyNickname");
-	}
-
-	public static void main(String[] args) throws IOException {
-		if (args.length != 3) {
-			usage();
-			return;
-		}
-		Client client = new Client(args[0], Integer.parseInt(args[1]), args[2]);
-		client.launch();
-
 	}
 
 }
