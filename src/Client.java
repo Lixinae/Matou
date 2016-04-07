@@ -142,7 +142,7 @@ public class Client {
             buffSendAll.put(M_ALL);
             buffSendAll.putInt(nickname.length());
             buffSendAll.put(UTF8_charset.encode(nickname));
-            buffSendAll.putInt(buffMessage.capacity());
+            buffSendAll.putInt(messageAll.length());
             buffSendAll.put(buffMessage);
             messageAll = null;
             buffSendAll.flip();

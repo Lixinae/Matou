@@ -384,9 +384,12 @@ public class Server {
         name.flip();
 
         int sizeMessage = byteBuffer.getInt();
+
         ByteBuffer message = ByteBuffer.allocate(sizeMessage);
+
         for (int i = 0; i < sizeMessage; i++) {
-            message.put(byteBuffer.get());
+            byte b = byteBuffer.get();
+            message.put(b);
         }
 
 
