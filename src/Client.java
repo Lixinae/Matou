@@ -1,14 +1,10 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.Set;
+import java.util.Scanner;
 
 public class Client {
 
@@ -59,7 +55,8 @@ public class Client {
 	}
 
 	public void launch() throws IOException {
-		threadClient().start();
+		int size=0;
+		threadRead().start();
 		while (!Thread.interrupted()) {
 			actualiseListe();
 			ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
@@ -72,26 +69,42 @@ public class Client {
 				switch (b) {
 				case CO_CLIENT_TO_CLIENT:
 					actualiseListe();
-					int size = buffByte.getInt();
+					size = buffByte.getInt();
 					ByteBuffer buffName = ByteBuffer.allocate(size);
 					System.out.println(UTF8_charset.decode(buffName) + "souhaiterai se connecter avec vous.");
 					break;
 				case ACK_CO_CLIENT:
-					threadClient(socketClient).start();
+					size = buffByte.getInt();
+					//nous faut t il l'host et le port?
+					threadClient(null).start();//socket en arg
 					break;
 				case M_CLIENT_TO_CLIENT:
 					break;
 				case F_CLIENT_TO_CLIENT:
 					break;
 				case M_ALL:
+					size = buffByte.getInt();
+					ByteBuffer buffPseudo = ByteBuffer.allocate(size);
+					buffPseudo.put(buffByte);
+					size = buffByte.getInt();
+					ByteBuffer buffMessenger = ByteBuffer.allocate(size);
+					System.out.println(UTF8_charset.decode(buffPseudo)+":"+UTF8_charset.decode(buffMessenger));
 					break;
 				default:
 				}
 			}
 
 			if (messageAll != null) {
-				// envoie messageAll a tous
-				// messageAll=null
+				ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
+				ByteBuffer buffSendAll = ByteBuffer.allocate(BUFFER_SIZE);
+				buffSendAll.put(M_ALL);
+				buffSendAll.putInt(nickname.length());
+				buffSendAll.put(UTF8_charset.encode(nickname));
+				buffSendAll.putInt(buffMessage.capacity());
+				buffSendAll.put(buffMessage);
+				messageAll=null;
+				socket.write(buffSendAll);
+				
 			}
 			if (requeteCo != null) {
 
@@ -103,7 +116,7 @@ public class Client {
 		//mettre la liste des client dans la map
 	}
 
-	private Thread threadClient() {
+	private Thread threadClient(SocketChannel sc) {
 		return new Thread(() -> {
 			//scanner.read
 			//si il demande la connection il modifie requeteCo, sil demande un messageAll il modifie messageAll...
@@ -112,8 +125,46 @@ public class Client {
 
 	private Thread threadRead() {
 		return new Thread(() -> {
-
+			listeCommande();
+			System.out.println("Que souhaitez vous faire?");
+			Scanner sc = new Scanner(System.in);
+			while(sc.hasNextLine()){
+				boolean end=false;
+				String line = sc.nextLine();
+				String[] words = line.split(" ");
+				switch(words[0]){
+				case "/all":
+					messageAll = words[1];
+					break;
+				case "/commande":
+					listeCommande();
+					break;
+				case "/connect":
+					break;
+				case "/file":
+					break;
+				case "/exit":
+					sc.close();
+					end = true;
+					break;
+				default:
+					System.out.println("commande inconnu");
+					listeCommande();
+				}
+				if(end){
+					break;
+				}
+			}
 		});
+	}
+
+	private void listeCommande() {
+		System.out.println("voici les commandes utilisateur :\n"
+				+ "/commande pour lister les commande\n"
+				+ "/all monMessage pour envoyer un message à tout les clients\n"
+				+ "/connect pseudo pour vous connecter au client nommé pseudo\n"
+				+ "/file nomDuFichier pseudo pour envoyer un fichier à pseudo\n"
+				+ "/exit pour quittez la messagerie");
 	}
 
 	public void decodePack(SocketChannel socketChannel, ByteBuffer buffer) {
