@@ -11,14 +11,15 @@ public class Client {
     private final static Charset UTF8_charset = Charset.forName("UTF8");
     /*byte pour que le serveur sache qu'on envoie son pseudo*/
     private final static byte E_PSEUDO = 1;
-    /* connection et accus� de reception de la connection au client */
+    /* connection et accuse de reception de la connection au client */
     private final static byte CO_CLIENT_TO_CLIENT = 2;
     private final static byte ACK_CO_CLIENT = 3;
-    /* envoie d'un message ou d'un fichier � un client */
+    /* envoie d'un message ou d'un fichier a un client */
     private final static byte M_CLIENT_TO_CLIENT = 4;
     private final static byte F_CLIENT_TO_CLIENT = 5;
     /* Concerne l'envoie et la reception */
     private final static byte M_ALL = 9;
+    boolean end = false;
     private String nickname;
     private HashMap<String, SocketChannel> map;
     private SocketChannel socket;
@@ -46,7 +47,6 @@ public class Client {
         }
         Client client = new Client(args[0], Integer.parseInt(args[1]), args[2]);
         client.launch();
-
     }
 
     private void sendPseudo() throws IOException {
@@ -62,8 +62,7 @@ public class Client {
     // Lit ce que le socketChannel reçoit et le stock dans le buffer,
     // Si le buffer est trop petit , la taille est automatiquement augmenté
     // jusqu'a ce qu'il ne soit plus plein
-    private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc)
-            throws IOException {
+    private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc) throws IOException {
         while (sc.read(bbIn) != -1) {
             if (bbIn.position() < bbIn.limit()) {
                 return bbIn;
@@ -83,6 +82,9 @@ public class Client {
         int size = 0;
         threadRead().start();
         while (!Thread.interrupted()) {
+            if (end) {
+                break;
+            }
             actualiseListe();
             send();
             ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
@@ -92,13 +94,13 @@ public class Client {
             }
             buffByte.flip();
             while (buffByte.hasRemaining()) {
-                System.out.println("in while buffByte");
                 Byte b = buffByte.get();
                 switch (b) {
                     case CO_CLIENT_TO_CLIENT:
                         actualiseListe();
                         size = buffByte.getInt();
                         ByteBuffer buffName = ByteBuffer.allocate(size);
+
                         System.out.println(UTF8_charset.decode(buffName) + "souhaiterai se connecter avec vous.");
                         break;
                     case ACK_CO_CLIENT:
@@ -169,7 +171,7 @@ public class Client {
             System.out.println("Que souhaitez vous faire?");
             Scanner sc = new Scanner(System.in);
             while (sc.hasNextLine()) {
-                boolean end = false;
+
                 String line = sc.nextLine();
                 String[] words = line.split(" ");
                 if (words[0].equals("/all")) {
@@ -244,5 +246,4 @@ public class Client {
                 throw new IllegalStateException("wrong byte read");
         }
     }
-
 }
