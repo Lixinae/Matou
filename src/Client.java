@@ -68,6 +68,7 @@ public class Client {
 		threadRead().start();
 		while (!Thread.interrupted()) {
 			actualiseListe();
+			send();
 			ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
 			if (null == (buffByte = readAll(buffByte, socket))) {
 				continue;
@@ -103,21 +104,24 @@ public class Client {
 				}
 			}
 
-			if (messageAll != null) {
-				ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
-				ByteBuffer buffSendAll = ByteBuffer.allocate(BUFFER_SIZE);
-				buffSendAll.put(M_ALL);
-				buffSendAll.putInt(nickname.length());
-				buffSendAll.put(UTF8_charset.encode(nickname));
-				buffSendAll.putInt(buffMessage.capacity());
-				buffSendAll.put(buffMessage);
-				messageAll=null;
-				socket.write(buffSendAll);
-				
-			}
-			if (requeteCo != null) {
+		}
+	}
 
-			}
+	private void send() throws IOException {
+		if (messageAll != null) {
+			ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
+			ByteBuffer buffSendAll = ByteBuffer.allocate(BUFFER_SIZE);
+			buffSendAll.put(M_ALL);
+			buffSendAll.putInt(nickname.length());
+			buffSendAll.put(UTF8_charset.encode(nickname));
+			buffSendAll.putInt(buffMessage.capacity());
+			buffSendAll.put(buffMessage);
+			messageAll=null;
+			socket.write(buffSendAll);
+			
+		}
+		if (requeteCo != null) {
+
 		}
 	}
 
