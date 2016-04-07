@@ -251,7 +251,8 @@ public class Server {
                 System.out.println("Exiting decode pseudo");
                 break;
             case DC_PSEUDO:
-                System.out.println("Entering deconnection");
+                System.out.println("Entering disconnection");
+                System.out.println("Client " + clientMap.get(socketChannel) + " disconnected");
                 clientMap.remove(socketChannel);
                 try {
                     socketChannel.close();
@@ -260,8 +261,11 @@ public class Server {
                 }
                 dc = true;
                 key.cancel();
+                System.out.println("Exiting disconnection");
                 break;
             case D_LIST_CLIENT_CO:
+                // TODO Test ça
+                System.out.println("Entering demand list client");
                 ByteBuffer bbOut = encodeE_LIST_CLIENT_CO();
                 if (null == bbOut) {
                     System.err.println("This should never happen !!!!! Error : nobody is connected ");
@@ -277,7 +281,7 @@ public class Server {
                     System.err.println("Client closed connection before finishing sending");
 //                    e.printStackTrace();
                 }
-
+                System.out.println("Exiting demand list client");
                 break;
             case E_M_ALL:
 //                decodeM_ALL(byteBuffer);
