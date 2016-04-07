@@ -151,6 +151,7 @@ public class Client {
 	}
 
 	private Thread threadRead() {
+		
 		return new Thread(() -> {
 			listeCommande();
 			System.out.println("Que souhaitez vous faire?");
@@ -160,22 +161,35 @@ public class Client {
 				String line = sc.nextLine();
 				String[] words = line.split(" ");
 				System.out.println("word 0 " + words[0]);
-				switch(words[0]){
-				case "/all":
-					messageAll = words[1];
-					break;
-				case "/commande":
+				if(words[0].equals("/all")){
+					StringBuilder b = new StringBuilder();
+					for(int i=1;i<words.length;i++){
+						b.append(words[i]);
+						b.append(" ");
+					}
+					messageAll = b.toString();
+				}
+				else if(words[0].equals("/commandes")){
 					listeCommande();
-					break;
-				case "/connect":
+				}
+				/*case "/connect":
 					break;
 				case "/file":
-					break;
-				case "/exit":
+					break;*/
+				else if(words[0].equals("/exit")){
+					ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
+					byte byteSend = 6;
+					b.put(byteSend);
+					b.flip();
+					try {
+						socket.write(b);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 					sc.close();
 					end = true;
-					break;
-				default:
+				}
+				else{
 					System.out.println("commande inconnu");
 					listeCommande();
 				}
@@ -188,10 +202,10 @@ public class Client {
 
 	private void listeCommande() {
 		System.out.println("voici les commandes utilisateur :\n"
-				+ "/commande pour lister les commande\n"
-				+ "/all monMessage pour envoyer un message � tout les clients\n"
-				+ "/connect pseudo pour vous connecter au client nomm� pseudo\n"
-				+ "/file nomDuFichier pseudo pour envoyer un fichier � pseudo\n"
+				+ "/commandes pour lister les commande\n"
+				+ "/all monMessage pour envoyer un message a tout les clients\n"
+				+ "/connect pseudo pour vous connecter au client nomme pseudo\n"
+				+ "/file nomDuFichier pseudo pour envoyer un fichier a pseudo\n"
 				+ "/exit pour quittez la messagerie");
 	}
 
