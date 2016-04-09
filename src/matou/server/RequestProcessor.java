@@ -30,13 +30,12 @@ class RequestProcessor {
     private final static Charset UTF8_charset = Charset.forName("UTF8");
     private final HashMap<SocketChannel, String> clientMap = new HashMap<>();
 
-    SelectionKey key;
 
-    public RequestProcessor(SelectionKey key) {
-        this.key = key;
+    public RequestProcessor() {
+
     }
 
-    void processRequest() {
+    void processRequest(SelectionKey key) {
         SocketChannel socketChannel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
 
@@ -50,50 +49,19 @@ class RequestProcessor {
         switch (b) {
             case E_PSEUDO:
                 System.out.println("Entering decode pseudo");
-                String pseudo = decodeE_PSEUDO(byteBuffer);
-                if (null == pseudo) {
-                    System.err.println("Could not read name");
-                }
-//                if (pseudoAlreadyExists(pseudo)) {
-//                    sendAnswerPseudoExists(true, socketChannel);
-//                } else {
-//                    sendAnswerPseudoExists(false, socketChannel);
-//                    clientMap.put(socketChannel, pseudo);
-//                }
-                clientMap.put(socketChannel, pseudo);
-//                System.out.println("Liste des clients connecté " + clientMap.values());
+                decodeE_PSEUDO(socketChannel, byteBuffer);
                 System.out.println("Exiting decode pseudo");
                 break;
             case DC_PSEUDO:
                 System.out.println("Entering disconnection");
-                System.out.println("Client " + clientMap.get(socketChannel) + " disconnected");
-                clientMap.remove(socketChannel);
-                try {
-                    socketChannel.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                dc = true;
-                key.cancel();
+                dc = decodeDC_PSEUDO(key, socketChannel);
                 System.out.println("Exiting disconnection");
                 break;
             case D_LIST_CLIENT_CO:
                 // TODO Test ça
                 System.out.println("Entering demand list client");
-                ByteBuffer bbOut = encodeE_LIST_CLIENT_CO();
-                if (null == bbOut) {
-                    System.err.println("This should never happen !!!!! Error : nobody is connected ");
+                if (decodeD_LIST_CLIENT_CO(socketChannel)) {
                     return;
-                }
-                bbOut.flip();
-                try {
-                    while (bbOut.hasRemaining()) {
-                        socketChannel.write(bbOut);
-                    }
-
-                } catch (IOException e) {
-                    System.err.println("Client closed connection before finishing sending");
-//                    e.printStackTrace();
                 }
                 System.out.println("Exiting demand list client");
                 break;
@@ -101,26 +69,72 @@ class RequestProcessor {
                 // Send to each socketChannel connected
                 // Si socket en mode read -> attendre fin de la lecture et envoyer
                 System.out.println("Entering envoie message all");
-                writeM_ALL(byteBuffer, socketChannel);
+                decodeM_ALL(byteBuffer, socketChannel);
                 System.out.println("Exiting envoie message all");
                 break;
             default:
                 System.err.println("Error : Unkown code " + b);
+                break;
         }
         // TODO faire attention a recursivite -> ne devrait pas y avoir de soucis mais on ne sais jamais
         // // Si le client spam le serveur
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
 
-            System.err.println("This should only happen if the server is spammed by the client");
-            processRequest();
+            System.err.println("This should only happen if the server is spammed by a client");
+            processRequest(key);
         }
         if (!dc) {
             key.interestOps(SelectionKey.OP_READ);
         }
     }
 
-    private void writeM_ALL(ByteBuffer byteBuffer, SocketChannel socketChannel) {
+    private boolean decodeD_LIST_CLIENT_CO(SocketChannel socketChannel) {
+        ByteBuffer bbOut = encodeE_LIST_CLIENT_CO();
+        if (null == bbOut) {
+            System.err.println("This should never happen !!!!! Error : nobody is connected ");
+            return true;
+        }
+        bbOut.flip();
+        try {
+            while (bbOut.hasRemaining()) {
+                socketChannel.write(bbOut);
+            }
+
+        } catch (IOException e) {
+            System.err.println("matou.client.Client closed connection before finishing sending");
+//                    e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
+        System.out.println("matou.client.Client " + clientMap.get(socketChannel) + " disconnected");
+        clientMap.remove(socketChannel);
+        try {
+            socketChannel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        key.cancel();
+        return true;
+    }
+
+    private void decodeE_PSEUDO(SocketChannel socketChannel, ByteBuffer byteBuffer) {
+        String pseudo = decodeE_PSEUDO(byteBuffer);
+        if (null == pseudo) {
+            System.err.println("Could not read name");
+        }
+        if (pseudoAlreadyExists(pseudo)) {
+            sendAnswerPseudoExists(true, socketChannel);
+        } else {
+            sendAnswerPseudoExists(false, socketChannel);
+            clientMap.put(socketChannel, pseudo);
+        }
+        clientMap.put(socketChannel, pseudo);
+    }
+
+    private void decodeM_ALL(ByteBuffer byteBuffer, SocketChannel socketChannel) {
         int sizeName = byteBuffer.getInt();
         ByteBuffer name = ByteBuffer.allocate(sizeName);
         for (int i = 0; i < sizeName; i++) {
@@ -146,18 +160,13 @@ class RequestProcessor {
     }
 
     private void writeOneMessageToAll(ByteBuffer byteBuffer, SocketChannel clientSocketChannel) {
-        // TODO
-        // Peut etre avoir besoin de savoir si la channel est en read ou write
         ByteBuffer bbOut = byteBuffer.duplicate();
         clientMap.forEach((socketChannel, pseudo) -> {
             if (!clientSocketChannel.equals(socketChannel)) {
                 try {
-//                    System.out.println("DEBUG : bbOut = " + bbOut);
                     while (bbOut.hasRemaining()) {
                         socketChannel.write(bbOut);
                     }
-//                    System.out.println("DEBUG : bbOut après write = " + bbOut);
-
                 } catch (IOException e) {
                     System.err.println("Could not write on channel");
                     e.printStackTrace();
@@ -203,7 +212,7 @@ class RequestProcessor {
                 socketChannel.write(bbOut);
             }
         } catch (IOException e) {
-            System.err.println("Error : Client closed connection before sending finished");
+            System.err.println("Error : matou.client.Client closed connection before sending finished");
 //            e.printStackTrace();
         }
 
@@ -221,9 +230,17 @@ class RequestProcessor {
                 byteBuffer.putInt(value.length())
                         .put(UTF8_charset.encode(value))
                         .putInt(key.toString().length())
-                        .put(UTF8_charset.encode(key.toString()))
+                        .put(UTF8_charset.encode(remoteAddressToString(key)))
         );
         return byteBuffer;
+    }
+
+    private String remoteAddressToString(SocketChannel sc) {
+        try {
+            return sc.getRemoteAddress().toString().replace("\\/", "");
+        } catch (IOException e) {
+            return "???";
+        }
     }
 
     private long calculSizeBufferList() {

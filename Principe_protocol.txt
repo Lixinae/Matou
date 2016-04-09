@@ -3,11 +3,11 @@ On doit faire une RFC sous forme pdf a rendre
 C'est quoi RFC ?
 
 
-Les RFC détaillent le protocole.
-la RFC se dois de préciser la syntaxe et la grammaire du protocole, les détails d'implémentation étant spécifié sous forme de conseils (parfois appuyés)
-n'importe quel codeur peux en suivant à la lettre une RFC, réaliser une application implémentant le protocole.
+Les RFC dï¿½taillent le protocole.
+la RFC se dois de prï¿½ciser la syntaxe et la grammaire du protocole, les dï¿½tails d'implï¿½mentation ï¿½tant spï¿½cifiï¿½ sous forme de conseils (parfois appuyï¿½s)
+n'importe quel codeur peux en suivant ï¿½ la lettre une RFC, rï¿½aliser une application implï¿½mentant le protocole.
 
-En bref on explique comment ça marche
+En bref on explique comment ï¿½a marche
 
 
 Serveur : 
@@ -15,12 +15,12 @@ Boucle
 Socket = recu(bb)
 If bb!=null { 
 If new pseudo : rentre (pseudo,socket) dans la map
-If message all: envoie message à tous (sauf socket)
-If list client : renvoie la list client(à socket)
+If message all: envoie message ï¿½ tous (sauf socket)
+If list client : renvoie la list client(ï¿½ socket)
 }
 
 
-Client :
+matou.client.Client :
 
 
 Rentrer pseudo.
