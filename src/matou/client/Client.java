@@ -83,21 +83,12 @@ public class Client {
 
         socket.write(bNickNameToServer);
 
-        try {
-            // Obligatoire sinon le serveur n'a pas le temps de répondre
-            Thread.sleep(2);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
-        readAll(bReceive, socket);
+        while (socket.read(bReceive) == 0) ;
         bReceive.flip();
-
-//        System.out.println(bReceive);
 
         bReceive.get();
         int test = bReceive.getInt();
-//        System.out.println("test = " + test);
         return test == 0;
     }
 
@@ -284,7 +275,6 @@ public class Client {
                 while (sc.hasNextLine()) {
 
                     String line = sc.nextLine();
-                    System.out.println(line);
                     String[] words = line.split(" ");
                     ///////////////////////////////////////////////////////////
                     if (words[0].equals("/all")) {

@@ -218,8 +218,6 @@ class RequestProcessor {
         return clientMap.containsValue(pseudo);
     }
 
-
-
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
         if (size <= 0) {
