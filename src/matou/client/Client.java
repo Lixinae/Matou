@@ -265,82 +265,80 @@ public class Client {
         return new Thread(() -> {
             listeCommande();
             System.out.println("Que souhaitez vous faire?");
-            Scanner sc = new Scanner(System.in);
-            while (sc.hasNextLine()) {
+            try (Scanner sc = new Scanner(System.in)) {
+                while (sc.hasNextLine()) {
 
-                String line = sc.nextLine();
-                String[] words = line.split(" ");
-                ///////////////////////////////////////////////////////////
-                if (words[0].equals("/all")) {
-                    if (words.length < 2) {
-                        System.err.println("empty message");
+                    String line = sc.nextLine();
+                    String[] words = line.split(" ");
+                    ///////////////////////////////////////////////////////////
+                    if (words[0].equals("/all")) {
+                        if (words.length < 2) {
+                            System.err.println("empty message");
+                        }
+                        StringBuilder b = new StringBuilder();
+                        String sep = "";
+                        for (int i = 1; i < words.length; i++) {
+                            b.append(sep);
+                            b.append(words[i]);
+                            sep = " ";
+                        }
+                        messageAll = b.toString();
+                        System.out.println("messageAll = " + messageAll);
                     }
-                    StringBuilder b = new StringBuilder();
-                    String sep = "";
-                    for (int i = 1; i < words.length; i++) {
-                        b.append(sep);
-                        b.append(words[i]);
-                        sep = " ";
+                    ///////////////////////////////////////////////////////////
+                    else if (words[0].equals("/commandes")) {
+                        listeCommande();
                     }
-                    messageAll = b.toString();
-                    System.out.println("messageAll = " + messageAll);
-                }
-                ///////////////////////////////////////////////////////////
-                else if (words[0].equals("/commandes")) {
-                    listeCommande();
-                }
-                ///////////////////////////////////////////////////////////
-                else if (words[0].equals("/accept")) {
-                    if (words.length < 2) {
-                        System.err.println("empty user");
-                    } else if (words.length > 2) {
-                        System.err.println("too much argument");
-                    } else {
-                        pseudoACK = words[2];
+                    ///////////////////////////////////////////////////////////
+                    else if (words[0].equals("/accept")) {
+                        if (words.length < 2) {
+                            System.err.println("empty user");
+                        } else if (words.length > 2) {
+                            System.err.println("too much argument");
+                        } else {
+                            pseudoACK = words[2];
+                        }
                     }
-                }
-                ///////////////////////////////////////////////////////////
-                else if (words[0].equals("/connect")) {
-                    if (words.length < 2) {
-                        System.err.println("empty user");
-                    } else if (words.length > 2) {
-                        System.err.println("too much argument");
-                    } else {
-                        pseudoConnect = words[2];
+                    ///////////////////////////////////////////////////////////
+                    else if (words[0].equals("/connect")) {
+                        if (words.length < 2) {
+                            System.err.println("empty user");
+                        } else if (words.length > 2) {
+                            System.err.println("too much argument");
+                        } else {
+                            pseudoConnect = words[2];
+                        }
                     }
-                }
-                ///////////////////////////////////////////////////////////
-                else if (words[0].equals("/file")) {
-                    if (words.length < 2) {
-                        System.err.println("empty file name");
-                    } else if (words.length > 2) {
-                        System.err.println("too much argument");
-                    } else {
-                        userName = words[2];
-                        fileName = words[3];
+                    ///////////////////////////////////////////////////////////
+                    else if (words[0].equals("/file")) {
+                        if (words.length < 2) {
+                            System.err.println("empty file name");
+                        } else if (words.length > 2) {
+                            System.err.println("too much argument");
+                        } else {
+                            userName = words[2];
+                            fileName = words[3];
+                        }
                     }
-                }
-                ///////////////////////////////////////////////////////////
-                else if (words[0].equals("/exit")) {
-                    ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
-                    byte byteSend = 6;
-                    b.put(byteSend);
-                    b.flip();
-                    try {
-                        socket.write(b);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    ///////////////////////////////////////////////////////////
+                    else if (words[0].equals("/exit")) {
+                        ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
+                        byte byteSend = 6;
+                        b.put(byteSend);
+                        b.flip();
+                        try {
+                            socket.write(b);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        end = true;
+                        break;
                     }
-                    sc.close();
-                    end = true;
-                }
-                ///////////////////////////////////////////////////////////
-                else {
-                    System.err.println("Commande inconnu : " + words[0]);
-                    listeCommande();
-                }
-                if (end) {
-                    break;
+                    ///////////////////////////////////////////////////////////
+                    else {
+                        System.err.println("Commande inconnu : " + words[0]);
+                        listeCommande();
+                    }
                 }
             }
         });
