@@ -36,12 +36,13 @@ public class Client {
     private String userName = null;
 
     public Client(String host, int port) throws IOException {
-        pseudoRegister();
+
         mapClient = new HashMap<>();
         friend = new HashMap<>();
         socket = SocketChannel.open();
         socket.connect(new InetSocketAddress(host, port));
         socket.configureBlocking(false);
+
     }
 
     private static void usage() {
@@ -54,6 +55,7 @@ public class Client {
             return;
         }
         Client client = new Client(args[0], Integer.parseInt(args[1]));
+        client.pseudoRegister();
         client.launch();
     }
 
@@ -66,24 +68,37 @@ public class Client {
     private boolean sendPseudo() throws IOException {
         System.out.println("Quel pseudo souhaitez vous avoir ?");
 
-        // FindBugs trouve une erreur ici , on devrait pas avoir de soucis si on reste sous un systeme UNIX
-        // Si c'est execute sur un autre systeme ça peut planter
-        try (Scanner scan = new Scanner(System.in)) {
-            if (scan.hasNextLine()) {
-                nickname = scan.nextLine();
-            }
+        Scanner scan = new Scanner(System.in);
+
+        if (scan.hasNextLine()) {
+            nickname = scan.nextLine();
         }
+
         ByteBuffer bNickName = UTF8_charset.encode(nickname);
         ByteBuffer bNickNameToServer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + nickname.length());
         bNickNameToServer.put(E_PSEUDO)
                 .putInt(nickname.length())
                 .put(bNickName);
         bNickNameToServer.flip();
+
         socket.write(bNickNameToServer);
 
+        try {
+            // Obligatoire sinon le serveur n'a pas le temps de répondre
+            Thread.sleep(2);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
         readAll(bReceive, socket);
-        return bReceive.getInt() == 1;
+        bReceive.flip();
+
+//        System.out.println(bReceive);
+
+        bReceive.get();
+        int test = bReceive.getInt();
+//        System.out.println("test = " + test);
+        return test == 0;
     }
 
     // Lit ce que le socketChannel recoit et le stock dans le buffer,
@@ -113,7 +128,7 @@ public class Client {
                 break;
             }
             send();
-            demandeList();
+//            demandeList(); -> ajouter un timer qui demandera tout les X temps , plutot que à chaque tour de boucle
             ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
             ByteBuffer buffName;
             if (null == (buffByte = readAll(buffByte, socket))) {
@@ -269,6 +284,7 @@ public class Client {
                 while (sc.hasNextLine()) {
 
                     String line = sc.nextLine();
+                    System.out.println(line);
                     String[] words = line.split(" ");
                     ///////////////////////////////////////////////////////////
                     if (words[0].equals("/all")) {
@@ -332,6 +348,7 @@ public class Client {
                             e.printStackTrace();
                         }
                         end = true;
+                        sc.close();
                         break;
                     }
                     ///////////////////////////////////////////////////////////
@@ -341,6 +358,8 @@ public class Client {
                     }
                 }
             }
+
+
         });
     }
 

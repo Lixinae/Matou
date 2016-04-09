@@ -131,7 +131,28 @@ class RequestProcessor {
             sendAnswerPseudoExists(false, socketChannel);
             clientMap.put(socketChannel, pseudo);
         }
-        clientMap.put(socketChannel, pseudo);
+//        clientMap.put(socketChannel, pseudo);
+    }
+
+    private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
+        ByteBuffer bbOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+        bbOut.put(R_PSEUDO);
+        if (exists) {
+            bbOut.putInt(1);
+        } else {
+            bbOut.putInt(0);
+
+        }
+        bbOut.flip();
+        try {
+            while (bbOut.hasRemaining()) {
+                socketChannel.write(bbOut);
+            }
+        } catch (IOException e) {
+            System.err.println("Error : matou.client.Client closed connection before sending finished");
+//            e.printStackTrace();
+        }
+
     }
 
     private void decodeM_ALL(ByteBuffer byteBuffer, SocketChannel socketChannel) {
@@ -197,26 +218,7 @@ class RequestProcessor {
         return clientMap.containsValue(pseudo);
     }
 
-    private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
-        ByteBuffer bbOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-        bbOut.put(R_PSEUDO);
-        if (exists) {
-            bbOut.putInt(1);
-        } else {
-            bbOut.putInt(0);
 
-        }
-        bbOut.flip();
-        try {
-            while (bbOut.hasRemaining()) {
-                socketChannel.write(bbOut);
-            }
-        } catch (IOException e) {
-            System.err.println("Error : matou.client.Client closed connection before sending finished");
-//            e.printStackTrace();
-        }
-
-    }
 
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
