@@ -297,7 +297,7 @@ class RequestProcessor {
 
     private String remoteAddressToString(SocketChannel sc) {
         try {
-            return sc.getRemoteAddress().toString().replace("\\/", "");
+            return sc.getRemoteAddress().toString().replace("/", "");
         } catch (IOException e) {
             return "???";
         }

@@ -238,10 +238,16 @@ public class Client {
                     .put(UTF8_charset.encode(nickname));
             buffSendACK.flip();
 
+
             SocketChannel socketACK = SocketChannel.open();
-            // Erreur ligne en dessous UnresolvedAddressException
+
+            // Le / est tout a fait normal ici
             System.out.println("Map get pseudo ack = " + mapClient.get(pseudoACK));
+
+            // Erreur sur le connect "java.net.SocketException: Permission denied: connect"
             socketACK.connect(mapClient.get(pseudoACK));
+
+
             friend.put(pseudoACK, socketACK);
             socketACK.write(buffSendACK);
             clientClient(socketACK);
@@ -320,6 +326,7 @@ public class Client {
 			}
     	});
 	}
+
     private Thread clientClient(SocketChannel s){
         return new Thread(() -> {
            	try {
@@ -358,7 +365,6 @@ public class Client {
     		}
 		}
     }
-
 
     private void demandeList() throws IOException {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
