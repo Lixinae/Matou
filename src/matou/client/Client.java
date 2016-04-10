@@ -274,12 +274,13 @@ public class Client {
     }
 
     private Thread ServeurClient() throws IOException {
-    	return new Thread( ()->{
+    	//return new Thread( ()->{
 			SocketChannel s;
 			try {
 				s = serverSocketChannel.accept();
 				ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES+Byte.BYTES);
 				ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
+				ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
 				readAll(buff, s);
 				buff.flip();
 				byte b = buff.get();
@@ -292,11 +293,17 @@ public class Client {
 				}
 				buffName.flip();
 	    		friend.put(UTF8_charset.decode(buffName).toString(), s);
+	    		while(!Thread.interrupted()){
+	    			if((buffRead=readAll(buffRead, s))==null){
+	    				continue;
+	    			}
+	    			
+	    		}
 	    		//read
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-    	});
+    	//});
 	}
     private Thread clientClient(){
     	return null;
