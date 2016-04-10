@@ -3,6 +3,7 @@ package matou.client;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -23,11 +24,20 @@ public class Client {
     private final static byte R_LIST_CLIENT_CO = 8;
     /* Concerne l'envoie et la reception */
     private final static byte M_ALL = 9;
+    private final static byte R_PSEUDO = 10;
+    
+    /*Le temps que doit attendre le programme entre deux actualisation de la liste*/
+	private static final long ACTU_LIST_TIME_MILLIS = 1000*5;
+	
     boolean end = false;
     private String nickname;
+    
     private HashMap<String, InetSocketAddress> mapClient;
     private HashMap<String, SocketChannel> friend;
+    
     private SocketChannel socket;
+	private ServerSocketChannel serverSocketChannel;
+	
     private int BUFFER_SIZE = 1024;
     private String messageAll = null;
     private String pseudoACK = null;
@@ -42,6 +52,8 @@ public class Client {
         socket = SocketChannel.open();
         socket.connect(new InetSocketAddress(host, port));
         socket.configureBlocking(false);
+		serverSocketChannel = ServerSocketChannel.open();
+		serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
 
     }
 
@@ -84,10 +96,15 @@ public class Client {
         socket.write(bNickNameToServer);
 
         ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
-        while (socket.read(bReceive) == 0) ;
-        bReceive.flip();
-
-        bReceive.get();
+        //lis des donnée, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
+        //dans tout le buffer il recommence a read.
+        do{
+	        while (socket.read(bReceive) == 0) ;
+	        bReceive.flip();
+	        bReceive.get();
+	        while(bReceive.get() != R_PSEUDO && bReceive.hasRemaining());
+        }while(!bReceive.hasRemaining());
+        
         int test = bReceive.getInt();
         return test == 0;
     }
@@ -114,12 +131,17 @@ public class Client {
     public void launch() throws IOException {
         int size;
         threadRead().start();
+        long deb = System.currentTimeMillis();
         while (!Thread.interrupted()) {
             if (end) {
                 break;
             }
             send();
-//            demandeList(); -> ajouter un timer qui demandera tout les X temps , plutot que Ã  chaque tour de boucle
+            if(System.currentTimeMillis()-deb>ACTU_LIST_TIME_MILLIS){
+            	demandeList();
+            	deb=System.currentTimeMillis();
+            }
+//            demandeList(); -> ajouter un timer qui demandera tout les X temps , plutot que a chaque tour de boucle
             ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
             ByteBuffer buffName;
             if (null == (buffByte = readAll(buffByte, socket))) {
@@ -130,6 +152,7 @@ public class Client {
                 Byte b = buffByte.get();
                 switch (b) {
                     case CO_CLIENT_TO_CLIENT:
+                    	//se mettre en mode client
                         size = buffByte.getInt();
                         buffName = ByteBuffer.allocate(size);
                         for (int i = 0; i < size; i++) {
@@ -152,6 +175,7 @@ public class Client {
                     case F_CLIENT_TO_CLIENT:
                         break;
                     case R_LIST_CLIENT_CO:
+                    	mapClient = new HashMap<>();
                         //size + sizepseudo + stringpseudo + sizeadress + stringadress
                         size = buffByte.getInt();
                         while (size > 0) {
@@ -168,6 +192,7 @@ public class Client {
                             addList(buffSocket, buffClient);
                             size--;
                         }
+                        mapClient.forEach((key,value)->System.out.println(key));
                         actualiseListFriend();
                         break;
                     case M_ALL:
@@ -213,20 +238,33 @@ public class Client {
         if (pseudoACK != null) {
             ByteBuffer buffSendACK = ByteBuffer.allocate(BUFFER_SIZE);
             buffSendACK.put(ACK_CO_CLIENT);
+            buffSendACK.putInt(nickname.length());
+            buffSendACK.put(UTF8_charset.encode(nickname));
             buffSendACK.flip();
-            socket.write(buffSendACK);
 
             SocketChannel socketACK = SocketChannel.open();
             socketACK.connect(mapClient.get(pseudoACK));
             friend.put(pseudoACK, socketACK);
+            socketACK.write(buffSendACK);
             pseudoACK = null;
         }
         if (pseudoConnect != null) {
             //envoyer demande a pseudo connect
+        	ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
+        	buffConnect.put(CO_CLIENT_TO_CLIENT);
+        	buffConnect.putInt(pseudoConnect.length());
+        	buffConnect.put(UTF8_charset.encode(pseudoConnect));
+        	buffConnect.putInt(nickname.length());
+        	buffConnect.put(UTF8_charset.encode(nickname));
+        	buffConnect.flip();
+        	ServeurClient().start();
+        	socket.write(buffConnect);
+        	
             //se mettre en mode serveur
             pseudoConnect = null;
         }
         if (fileName != null && userName != null) {
+        	//verifier que le client est dans la liste d'ami
             //lire dans filename
             //envoyer ce qui est lu en thread
             userName = null;
@@ -235,7 +273,39 @@ public class Client {
 
     }
 
-    private void demandeList() throws IOException {
+    private Thread ServeurClient() throws IOException {
+    	return new Thread( ()->{
+			SocketChannel s;
+			try {
+				s = serverSocketChannel.accept();
+				ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES+Byte.BYTES);
+				ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
+				readAll(buff, s);
+				buff.flip();
+				byte b = buff.get();
+				if(b!=ACK_CO_CLIENT){
+					System.out.println("erreur");
+				}
+				int size = buff.getInt();
+				for(int i=0;i<size;i++){
+					buffName.put(buff.get());
+				}
+				buffName.flip();
+	    		friend.put(UTF8_charset.decode(buffName).toString(), s);
+	    		//read
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+    	});
+	}
+    private Thread clientClient(){
+    	return null;
+    	//return new Thread( ()->{
+		//attendre le read
+    	//});
+    }
+
+	private void demandeList() throws IOException {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
         buff.put(D_LIST_CLIENT_CO);
         buff.flip();
