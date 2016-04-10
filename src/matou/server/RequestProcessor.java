@@ -109,8 +109,7 @@ class RequestProcessor {
             }
 
         } catch (IOException e) {
-            System.err.println("matou.client.Client closed connection before finishing sending");
-//                    e.printStackTrace();
+            System.err.println("Client closed connection before finishing sending");
         }
         return false;
     }
@@ -130,7 +129,7 @@ class RequestProcessor {
     private void decodeE_PSEUDO(SocketChannel socketChannel, ByteBuffer byteBuffer) {
         String pseudo = decodeE_PSEUDO(byteBuffer);
         if (null == pseudo) {
-            System.err.println("Could not read name");
+            System.err.println("Error : Could not read name");
         }
         if (pseudoAlreadyExists(pseudo)) {
             sendAnswerPseudoExists(true, socketChannel);
@@ -138,7 +137,6 @@ class RequestProcessor {
             sendAnswerPseudoExists(false, socketChannel);
             clientMap.put(socketChannel, pseudo);
         }
-//        clientMap.put(socketChannel, pseudo);
     }
 
     private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
@@ -156,8 +154,7 @@ class RequestProcessor {
                 socketChannel.write(bbOut);
             }
         } catch (IOException e) {
-            System.err.println("Error : matou.client.Client closed connection before sending finished");
-//            e.printStackTrace();
+            System.err.println("Error : Client closed connection before sending finished");
         }
 
     }
@@ -196,8 +193,7 @@ class RequestProcessor {
                         socketChannel.write(bbOut);
                     }
                 } catch (IOException e) {
-                    System.err.println("Could not write on channel");
-                    e.printStackTrace();
+                    System.err.println("Error : Could not write on channel");
                 }
                 bbOut.rewind(); // Remet la position au début pour une réutilisation
             }
@@ -234,7 +230,6 @@ class RequestProcessor {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
         clientMap.forEach((key, value) -> {
-//                    System.out.println(remoteAddressToString(key));
                     byteBuffer.putInt(value.length())
                             .put(UTF8_charset.encode(value))
                             .putInt(remoteAddressToString(key).length())
