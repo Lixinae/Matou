@@ -36,6 +36,9 @@ class RequestProcessor {
     }
 
     void processRequest(SelectionKey key) {
+
+        cleanMapFromInvalidKeys();
+
         SocketChannel socketChannel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
 
@@ -87,6 +90,10 @@ class RequestProcessor {
         if (!dc) {
             key.interestOps(SelectionKey.OP_READ);
         }
+    }
+
+    private void cleanMapFromInvalidKeys() {
+        clientMap.keySet().removeIf(e -> remoteAddressToString(e).equals("???"));
     }
 
     private boolean decodeD_LIST_CLIENT_CO(SocketChannel socketChannel) {
@@ -227,7 +234,7 @@ class RequestProcessor {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
         clientMap.forEach((key, value) -> {
-                    System.out.println(remoteAddressToString(key));
+//                    System.out.println(remoteAddressToString(key));
                     byteBuffer.putInt(value.length())
                             .put(UTF8_charset.encode(value))
                             .putInt(remoteAddressToString(key).length())
