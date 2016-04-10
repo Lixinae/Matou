@@ -41,6 +41,8 @@ public class Client {
     private String pseudoConnect = null;
     private String fileName = null;
     private String userName = null;
+	private String dest=null;
+	private String messageToClient=null;
 
     public Client(String host, int port) throws IOException {
 
@@ -158,18 +160,6 @@ public class Client {
                         String user = UTF8_charset.decode(buffName).toString();
                         System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
                         break;
-                    case ACK_CO_CLIENT:
-                        size = buffByte.getInt();
-                        buffName = ByteBuffer.allocate(size);
-                        for (int i = 0; i < size; i++) {
-                            buffName.put(buffByte.get());
-                        }
-                        buffName.flip();
-                        break;
-                    case M_CLIENT_TO_CLIENT:
-                        break;
-                    case F_CLIENT_TO_CLIENT:
-                        break;
                     case R_LIST_CLIENT_CO:
                         mapClient = new HashMap<>();
                         //size + sizepseudo + stringpseudo + sizeadress + stringadress
@@ -209,7 +199,7 @@ public class Client {
 
                         buffPseudo.flip();
                         buffMessenger.flip();
-                        System.out.println(UTF8_charset.decode(buffPseudo) + ":" + UTF8_charset.decode(buffMessenger));
+                        System.out.println("[all] "+UTF8_charset.decode(buffPseudo) + " : " + UTF8_charset.decode(buffMessenger));
                         break;
                     default:
                         System.err.println("Error : Unkown code " + b);
@@ -253,6 +243,7 @@ public class Client {
             socketACK.connect(mapClient.get(pseudoACK));
             friend.put(pseudoACK, socketACK);
             socketACK.write(buffSendACK);
+            clientClient(socketACK);
             pseudoACK = null;
         }
         if (pseudoConnect != null) {
@@ -277,18 +268,36 @@ public class Client {
             userName = null;
             fileName = null;
         }
+        if(messageToClient!=null && dest!=null){
+        	ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
+        	buffSend.put(M_CLIENT_TO_CLIENT)
+        			.putInt(messageToClient.length())
+        			.put(UTF8_charset.encode(messageToClient));
+        	buffSend.flip();
+        	friend.forEach((key,value)->{
+        		if(key.equals(dest)){
+        			try {
+						value.write(buffSend);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+        		}
+        	});
+        	
+        	messageToClient=null;
+        	dest=null;
+        }
+        	
 
     }
 
-    private Thread ServeurClient() throws IOException {
-<<<<<<< HEAD
-    	//return new Thread( ()->{
+    private Thread ServeurClient() {
+    	return new Thread( ()->{
 			SocketChannel s;
 			try {
 				s = serverSocketChannel.accept();
 				ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES+Byte.BYTES);
 				ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
-				ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
 				readAll(buff, s);
 				buff.flip();
 				byte b = buff.get();
@@ -301,56 +310,49 @@ public class Client {
 				}
 				buffName.flip();
 	    		friend.put(UTF8_charset.decode(buffName).toString(), s);
-	    		while(!Thread.interrupted()){
-	    			if((buffRead=readAll(buffRead, s))==null){
-	    				continue;
-	    			}
-	    			
-	    		}
-	    		//read
+	    		ReadClient(s);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-    	//});
+    	});
 	}
-    private Thread clientClient(){
-    	return null;
-    	//return new Thread( ()->{
-		//attendre le read
-    	//});
-=======
+    private Thread clientClient(SocketChannel s){
         return new Thread(() -> {
-            SocketChannel s;
-            try {
-                s = serverSocketChannel.accept();
-                ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
-                ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
-                readAll(buff, s);
-                buff.flip();
-                byte b = buff.get();
-                if (b != ACK_CO_CLIENT) {
-                    System.out.println("erreur");
-                }
-                int size = buff.getInt();
-                for (int i = 0; i < size; i++) {
-                    buffName.put(buff.get());
-                }
-                buffName.flip();
-                friend.put(UTF8_charset.decode(buffName).toString(), s);
-                //read
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+           	try {
+				ReadClient(s);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+       });
+    }
+    
+    private void ReadClient(SocketChannel s) throws IOException{
+		ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
+		while(!Thread.interrupted()){
+			if((buffRead=readAll(buffRead, s))==null){
+				continue;
+			}
+    		byte b = buffRead.get();
+    		switch(b){
+            case M_CLIENT_TO_CLIENT:
+            	int size = buffRead.getInt();
+            	ByteBuffer bMessage = ByteBuffer.allocate(size);
+            	for(int i=0;i<size;i++){
+            		bMessage.put(buffRead.get());
+            	}
+            	bMessage.flip();
+            	friend.forEach((key,value)->{
+            		if(value.equals(s)){
+            			System.out.println("[private] "+key + " : "+ UTF8_charset.decode(bMessage));
+            		}
+            	});
+                break;
+            case F_CLIENT_TO_CLIENT:
+                break;
+    		}
+		}
     }
 
-    private Thread clientClient() {
-        return null;
-        //return new Thread( ()->{
-        //attendre le read
-        //});
->>>>>>> origin/master
-    }
 
     private void demandeList() throws IOException {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
@@ -412,6 +414,22 @@ public class Client {
                     listeCommande();
                 }
                 ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/w")) {
+                    if (words.length < 2) {
+                        System.err.println("empty message");
+                    }
+                    dest = words[1];
+                    StringBuilder b = new StringBuilder();
+                    String sep = "";
+                    for (int i = 2; i < words.length; i++) {
+                        b.append(sep);
+                        b.append(words[i]);
+                        sep = " ";
+                    }
+                    messageToClient = b.toString();
+                    System.out.println("message = " + messageToClient);
+                }
+                ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/accept")) {
                     if (words.length < 2) {
                         System.err.println("empty user");
@@ -471,6 +489,7 @@ public class Client {
     private void listeCommande() {
         System.out.println("voici les commandes utilisateur :\n"
                 + "/commandes pour lister les commande\n"
+                + "/w pseudo message pour envoyer un message a pseudo\n"
                 + "/all monMessage pour envoyer un message a tout les clients\n"
                 + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
                 + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
