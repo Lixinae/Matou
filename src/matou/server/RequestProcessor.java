@@ -115,7 +115,7 @@ class RequestProcessor {
     }
 
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
-        System.out.println("matou.client.Client " + clientMap.get(socketChannel) + " disconnected");
+        System.out.println("Client " + clientMap.get(socketChannel) + " disconnected");
         clientMap.remove(socketChannel);
         try {
             socketChannel.close();
