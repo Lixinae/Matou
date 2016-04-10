@@ -226,11 +226,13 @@ class RequestProcessor {
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
-        clientMap.forEach((key, value) ->
-                byteBuffer.putInt(value.length())
-                        .put(UTF8_charset.encode(value))
-                        .putInt(key.toString().length())
-                        .put(UTF8_charset.encode(remoteAddressToString(key)))
+        clientMap.forEach((key, value) -> {
+                    System.out.println(remoteAddressToString(key));
+                    byteBuffer.putInt(value.length())
+                            .put(UTF8_charset.encode(value))
+                            .putInt(remoteAddressToString(key).length())
+                            .put(UTF8_charset.encode(remoteAddressToString(key)));
+                }
         );
         return byteBuffer;
     }
