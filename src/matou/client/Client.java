@@ -25,19 +25,16 @@ public class Client {
     /* Concerne l'envoie et la reception */
     private final static byte M_ALL = 9;
     private final static byte R_PSEUDO = 10;
-    
+
     /*Le temps que doit attendre le programme entre deux actualisation de la liste*/
-	private static final long ACTU_LIST_TIME_MILLIS = 1000*5;
-	
+    private static final long ACTU_LIST_TIME_MILLIS = 1000 * 5;
+    private final Scanner scan;
     boolean end = false;
     private String nickname;
-    
     private HashMap<String, InetSocketAddress> mapClient;
     private HashMap<String, SocketChannel> friend;
-    
     private SocketChannel socket;
-	private ServerSocketChannel serverSocketChannel;
-	
+    private ServerSocketChannel serverSocketChannel;
     private int BUFFER_SIZE = 1024;
     private String messageAll = null;
     private String pseudoACK = null;
@@ -52,8 +49,9 @@ public class Client {
         socket = SocketChannel.open();
         socket.connect(new InetSocketAddress(host, port));
         socket.configureBlocking(false);
-		serverSocketChannel = ServerSocketChannel.open();
-		serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
+        serverSocketChannel = ServerSocketChannel.open();
+        serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
+        scan = new Scanner(System.in);
 
     }
 
@@ -80,7 +78,6 @@ public class Client {
     private boolean sendPseudo() throws IOException {
         System.out.println("Quel pseudo souhaitez vous avoir ?");
 
-        Scanner scan = new Scanner(System.in);
 
         if (scan.hasNextLine()) {
             nickname = scan.nextLine();
@@ -96,15 +93,13 @@ public class Client {
         socket.write(bNickNameToServer);
 
         ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
-        //lis des donnée, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
+        //lis des donnï¿½e, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
         //dans tout le buffer il recommence a read.
-        do{
-	        while (socket.read(bReceive) == 0) ;
-	        bReceive.flip();
-	        bReceive.get();
-	        while(bReceive.get() != R_PSEUDO && bReceive.hasRemaining());
-        }while(!bReceive.hasRemaining());
-        
+        do {
+            while (socket.read(bReceive) == 0) ;
+            bReceive.flip();
+            while (bReceive.get() != R_PSEUDO && bReceive.hasRemaining()) ;
+        } while (!bReceive.hasRemaining());
         int test = bReceive.getInt();
         return test == 0;
     }
@@ -132,18 +127,19 @@ public class Client {
         int size;
         threadRead().start();
         long deb = System.currentTimeMillis();
+        ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
+        ByteBuffer buffName;
         while (!Thread.interrupted()) {
             if (end) {
                 break;
             }
             send();
-            if(System.currentTimeMillis()-deb>ACTU_LIST_TIME_MILLIS){
-            	demandeList();
-            	deb=System.currentTimeMillis();
+            if (System.currentTimeMillis() - deb > ACTU_LIST_TIME_MILLIS) {
+                demandeList();
+                deb = System.currentTimeMillis();
             }
-//            demandeList(); -> ajouter un timer qui demandera tout les X temps , plutot que a chaque tour de boucle
-            ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
-            ByteBuffer buffName;
+//            demandeList(); -> ajouter un timer qui demandera tout les X temps , plutot que aï¿½chaque tour de boucle
+
             if (null == (buffByte = readAll(buffByte, socket))) {
                 continue;
             }
@@ -152,7 +148,7 @@ public class Client {
                 Byte b = buffByte.get();
                 switch (b) {
                     case CO_CLIENT_TO_CLIENT:
-                    	//se mettre en mode client
+                        //se mettre en mode client
                         size = buffByte.getInt();
                         buffName = ByteBuffer.allocate(size);
                         for (int i = 0; i < size; i++) {
@@ -175,7 +171,7 @@ public class Client {
                     case F_CLIENT_TO_CLIENT:
                         break;
                     case R_LIST_CLIENT_CO:
-                    	mapClient = new HashMap<>();
+                        mapClient = new HashMap<>();
                         //size + sizepseudo + stringpseudo + sizeadress + stringadress
                         size = buffByte.getInt();
                         while (size > 0) {
@@ -184,15 +180,18 @@ public class Client {
                             for (int i = 0; i < sizePseudo; i++) {
                                 buffClient.put(buffByte.get());
                             }
+
                             int sizeSocket = buffByte.getInt();
                             ByteBuffer buffSocket = ByteBuffer.allocate(sizeSocket);
                             for (int i = 0; i < sizeSocket; i++) {
                                 buffSocket.put(buffByte.get());
                             }
+                            buffSocket.flip();
+                            buffClient.flip();
                             addList(buffSocket, buffClient);
                             size--;
                         }
-                        mapClient.forEach((key,value)->System.out.println(key));
+                        mapClient.forEach((key, value) -> System.out.println(key));
                         actualiseListFriend();
                         break;
                     case M_ALL:
@@ -217,7 +216,15 @@ public class Client {
                         break;
                 }
             }
+            buffByte.compact();
+            try {
+                Thread.sleep(1); // millisieste -> sinon mange tout le cpu
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+
     }
 
     private void send() throws IOException {
@@ -237,9 +244,9 @@ public class Client {
         }
         if (pseudoACK != null) {
             ByteBuffer buffSendACK = ByteBuffer.allocate(BUFFER_SIZE);
-            buffSendACK.put(ACK_CO_CLIENT);
-            buffSendACK.putInt(nickname.length());
-            buffSendACK.put(UTF8_charset.encode(nickname));
+            buffSendACK.put(ACK_CO_CLIENT)
+                    .putInt(nickname.length())
+                    .put(UTF8_charset.encode(nickname));
             buffSendACK.flip();
 
             SocketChannel socketACK = SocketChannel.open();
@@ -250,21 +257,21 @@ public class Client {
         }
         if (pseudoConnect != null) {
             //envoyer demande a pseudo connect
-        	ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
-        	buffConnect.put(CO_CLIENT_TO_CLIENT);
-        	buffConnect.putInt(pseudoConnect.length());
-        	buffConnect.put(UTF8_charset.encode(pseudoConnect));
-        	buffConnect.putInt(nickname.length());
-        	buffConnect.put(UTF8_charset.encode(nickname));
-        	buffConnect.flip();
-        	ServeurClient().start();
-        	socket.write(buffConnect);
-        	
+            ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
+            buffConnect.put(CO_CLIENT_TO_CLIENT);
+            buffConnect.putInt(pseudoConnect.length());
+            buffConnect.put(UTF8_charset.encode(pseudoConnect));
+            buffConnect.putInt(nickname.length());
+            buffConnect.put(UTF8_charset.encode(nickname));
+            buffConnect.flip();
+            ServeurClient().start();
+            socket.write(buffConnect);
+
             //se mettre en mode serveur
             pseudoConnect = null;
         }
         if (fileName != null && userName != null) {
-        	//verifier que le client est dans la liste d'ami
+            //verifier que le client est dans la liste d'ami
             //lire dans filename
             //envoyer ce qui est lu en thread
             userName = null;
@@ -274,6 +281,7 @@ public class Client {
     }
 
     private Thread ServeurClient() throws IOException {
+<<<<<<< HEAD
     	//return new Thread( ()->{
 			SocketChannel s;
 			try {
@@ -310,9 +318,41 @@ public class Client {
     	//return new Thread( ()->{
 		//attendre le read
     	//});
+=======
+        return new Thread(() -> {
+            SocketChannel s;
+            try {
+                s = serverSocketChannel.accept();
+                ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
+                ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
+                readAll(buff, s);
+                buff.flip();
+                byte b = buff.get();
+                if (b != ACK_CO_CLIENT) {
+                    System.out.println("erreur");
+                }
+                int size = buff.getInt();
+                for (int i = 0; i < size; i++) {
+                    buffName.put(buff.get());
+                }
+                buffName.flip();
+                friend.put(UTF8_charset.decode(buffName).toString(), s);
+                //read
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
-	private void demandeList() throws IOException {
+    private Thread clientClient() {
+        return null;
+        //return new Thread( ()->{
+        //attendre le read
+        //});
+>>>>>>> origin/master
+    }
+
+    private void demandeList() throws IOException {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
         buff.put(D_LIST_CLIENT_CO);
         buff.flip();
@@ -327,6 +367,7 @@ public class Client {
 
     private void addList(ByteBuffer buffSocket, ByteBuffer buffClient) {
         String socketChan = UTF8_charset.decode(buffSocket).toString();
+        System.out.println("socket chan = " + socketChan);
         String[] token = socketChan.split(":");
         if (token.length != 2) {
             System.out.println("too much or too few data for socket");
@@ -348,81 +389,78 @@ public class Client {
         return new Thread(() -> {
             listeCommande();
             System.out.println("Que souhaitez vous faire?");
-            try (Scanner sc = new Scanner(System.in)) {
-                while (sc.hasNextLine()) {
-
-                    String line = sc.nextLine();
-                    String[] words = line.split(" ");
-                    ///////////////////////////////////////////////////////////
-                    if (words[0].equals("/all")) {
-                        if (words.length < 2) {
-                            System.err.println("empty message");
-                        }
-                        StringBuilder b = new StringBuilder();
-                        String sep = "";
-                        for (int i = 1; i < words.length; i++) {
-                            b.append(sep);
-                            b.append(words[i]);
-                            sep = " ";
-                        }
-                        messageAll = b.toString();
-                        System.out.println("messageAll = " + messageAll);
+            while (scan.hasNextLine()) {
+                String line = scan.nextLine();
+                String[] words = line.split(" ");
+                ///////////////////////////////////////////////////////////
+                if (words[0].equals("/all")) {
+                    if (words.length < 2) {
+                        System.err.println("empty message");
                     }
-                    ///////////////////////////////////////////////////////////
-                    else if (words[0].equals("/commandes")) {
-                        listeCommande();
+                    StringBuilder b = new StringBuilder();
+                    String sep = "";
+                    for (int i = 1; i < words.length; i++) {
+                        b.append(sep);
+                        b.append(words[i]);
+                        sep = " ";
                     }
-                    ///////////////////////////////////////////////////////////
-                    else if (words[0].equals("/accept")) {
-                        if (words.length < 2) {
-                            System.err.println("empty user");
-                        } else if (words.length > 2) {
-                            System.err.println("too much argument");
-                        } else {
-                            pseudoACK = words[2];
-                        }
+                    messageAll = b.toString();
+                    System.out.println("messageAll = " + messageAll);
+                }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/commandes")) {
+                    listeCommande();
+                }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/accept")) {
+                    if (words.length < 2) {
+                        System.err.println("empty user");
+                    } else if (words.length > 2) {
+                        System.err.println("too much argument");
+                    } else {
+                        pseudoACK = words[2];
                     }
-                    ///////////////////////////////////////////////////////////
-                    else if (words[0].equals("/connect")) {
-                        if (words.length < 2) {
-                            System.err.println("empty user");
-                        } else if (words.length > 2) {
-                            System.err.println("too much argument");
-                        } else {
-                            pseudoConnect = words[2];
-                        }
+                }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/connect")) {
+                    if (words.length < 2) {
+                        System.err.println("empty user");
+                    } else if (words.length > 2) {
+                        System.err.println("too much argument");
+                    } else {
+                        pseudoConnect = words[2];
                     }
-                    ///////////////////////////////////////////////////////////
-                    else if (words[0].equals("/file")) {
-                        if (words.length < 2) {
-                            System.err.println("empty file name");
-                        } else if (words.length > 2) {
-                            System.err.println("too much argument");
-                        } else {
-                            userName = words[2];
-                            fileName = words[3];
-                        }
+                }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/file")) {
+                    if (words.length < 2) {
+                        System.err.println("empty file name");
+                    } else if (words.length > 2) {
+                        System.err.println("too much argument");
+                    } else {
+                        userName = words[2];
+                        fileName = words[3];
                     }
-                    ///////////////////////////////////////////////////////////
-                    else if (words[0].equals("/exit")) {
-                        ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
-                        byte byteSend = 6;
-                        b.put(byteSend);
-                        b.flip();
-                        try {
-                            socket.write(b);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        end = true;
-                        sc.close();
-                        break;
+                }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/exit")) {
+                    ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
+                    byte byteSend = 6;
+                    b.put(byteSend);
+                    b.flip();
+                    try {
+                        socket.write(b);
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    ///////////////////////////////////////////////////////////
-                    else {
-                        System.err.println("Commande inconnu : " + words[0]);
-                        listeCommande();
-                    }
+                    end = true;
+                    scan.close();
+                    break;
+                }
+                ///////////////////////////////////////////////////////////
+                else {
+                    System.err.println("Commande inconnu : " + words[0]);
+                    listeCommande();
                 }
             }
 

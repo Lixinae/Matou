@@ -10,6 +10,10 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ * Project :Matou
+ * Created by Narex on 09/03/2016.
+ */
 public class Server {
 
     private final static int BUFF_SIZE = 8;
@@ -175,7 +179,7 @@ public class Server {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("matou.client.Client closed connection before finishing sending");
+            System.err.println("Client closed connection before finishing sending");
         }
         key.attach(byteBuffer);
         key.interestOps(SelectionKey.OP_WRITE);
