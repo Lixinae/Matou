@@ -181,7 +181,6 @@ public class Client {
                             addList(buffSocket, buffClient);
                             size--;
                         }
-                        mapClient.forEach((key, value) -> System.out.println(key));
                         actualiseListFriend();
                         break;
                     case M_ALL:
@@ -240,6 +239,8 @@ public class Client {
             buffSendACK.flip();
 
             SocketChannel socketACK = SocketChannel.open();
+            // Erreur ligne en dessous UnresolvedAddressException
+            System.out.println("Map get pseudo ack = " + mapClient.get(pseudoACK));
             socketACK.connect(mapClient.get(pseudoACK));
             friend.put(pseudoACK, socketACK);
             socketACK.write(buffSendACK);
@@ -248,12 +249,13 @@ public class Client {
         }
         if (pseudoConnect != null) {
             //envoyer demande a pseudo connect
+            System.out.println("Connecting");
             ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
-            buffConnect.put(CO_CLIENT_TO_CLIENT);
-            buffConnect.putInt(pseudoConnect.length());
-            buffConnect.put(UTF8_charset.encode(pseudoConnect));
-            buffConnect.putInt(nickname.length());
-            buffConnect.put(UTF8_charset.encode(nickname));
+            buffConnect.put(CO_CLIENT_TO_CLIENT)
+                    .putInt(pseudoConnect.length())
+                    .put(UTF8_charset.encode(pseudoConnect))
+                    .putInt(nickname.length())
+                    .put(UTF8_charset.encode(nickname));
             buffConnect.flip();
             ServeurClient().start();
             socket.write(buffConnect);
@@ -269,8 +271,9 @@ public class Client {
             fileName = null;
         }
         if(messageToClient!=null && dest!=null){
-        	ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
-        	buffSend.put(M_CLIENT_TO_CLIENT)
+            System.out.println("test a la con");
+            ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
+            buffSend.put(M_CLIENT_TO_CLIENT)
         			.putInt(messageToClient.length())
         			.put(UTF8_charset.encode(messageToClient));
         	buffSend.flip();
@@ -295,8 +298,9 @@ public class Client {
     	return new Thread( ()->{
 			SocketChannel s;
 			try {
-				s = serverSocketChannel.accept();
-				ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES+Byte.BYTES);
+                System.out.println("Accepting client");
+                s = serverSocketChannel.accept();
+                ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES+Byte.BYTES);
 				ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
 				readAll(buff, s);
 				buff.flip();
@@ -327,13 +331,15 @@ public class Client {
     }
     
     private void ReadClient(SocketChannel s) throws IOException{
-		ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
-		while(!Thread.interrupted()){
+        System.out.println("ReadClient");
+        ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
+        while(!Thread.interrupted()){
 			if((buffRead=readAll(buffRead, s))==null){
 				continue;
 			}
     		byte b = buffRead.get();
-    		switch(b){
+            System.out.println("readClient byte = " + b);
+            switch (b) {
             case M_CLIENT_TO_CLIENT:
             	int size = buffRead.getInt();
             	ByteBuffer bMessage = ByteBuffer.allocate(size);
@@ -369,10 +375,9 @@ public class Client {
 
     private void addList(ByteBuffer buffSocket, ByteBuffer buffClient) {
         String socketChan = UTF8_charset.decode(buffSocket).toString();
-        System.out.println("socket chan = " + socketChan);
         String[] token = socketChan.split(":");
         if (token.length != 2) {
-            System.out.println("too much or too few data for socket");
+            System.err.println("too much or too few data for socket");
         }
         InetSocketAddress in = new InetSocketAddress(token[0], Integer.parseInt(token[1]));
         mapClient.put(UTF8_charset.decode(buffClient).toString(), in);
@@ -436,7 +441,7 @@ public class Client {
                     } else if (words.length > 2) {
                         System.err.println("too much argument");
                     } else {
-                        pseudoACK = words[2];
+                        pseudoACK = words[1];
                     }
                 }
                 ///////////////////////////////////////////////////////////
@@ -446,7 +451,7 @@ public class Client {
                     } else if (words.length > 2) {
                         System.err.println("too much argument");
                     } else {
-                        pseudoConnect = words[2];
+                        pseudoConnect = words[1];
                     }
                 }
                 ///////////////////////////////////////////////////////////
@@ -456,8 +461,8 @@ public class Client {
                     } else if (words.length > 2) {
                         System.err.println("too much argument");
                     } else {
-                        userName = words[2];
-                        fileName = words[3];
+                        userName = words[1];
+                        fileName = words[2];
                     }
                 }
                 ///////////////////////////////////////////////////////////

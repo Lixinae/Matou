@@ -15,6 +15,7 @@ class RequestProcessor {
 
     /* Codes pour la reception de paquets */
     private final static byte E_PSEUDO = 1;
+    private static final byte CO_CLIENT_TO_CLIENT = 2;
     private final static byte DC_PSEUDO = 6;
     private final static byte D_LIST_CLIENT_CO = 7;
     private final static byte E_M_ALL = 9;
@@ -28,7 +29,8 @@ class RequestProcessor {
 //    private final static int TIME_OUT = 1000;
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
-    private final HashMap<SocketChannel, String> clientMap = new HashMap<>();
+
+    private final HashMap<String, SocketChannel> clientMap = new HashMap<>();
 
 
     public RequestProcessor() {
@@ -55,6 +57,18 @@ class RequestProcessor {
                 decodeE_PSEUDO(socketChannel, byteBuffer);
                 System.out.println("Exiting decode pseudo");
                 break;
+            case CO_CLIENT_TO_CLIENT:
+//                buffConnect.put(CO_CLIENT_TO_CLIENT)
+//                        .putInt(pseudoConnect.length())
+//                        .put(UTF8_charset.encode(pseudoConnect))
+//                        .putInt(nickname.length())
+//                        .put(UTF8_charset.encode(nickname));
+                System.out.println("Entering co client");
+
+                decodeCO_CLIENT_TO_CLIENT(byteBuffer);
+                System.out.println("Exiting co client");
+                break;
+
             case DC_PSEUDO:
                 System.out.println("Entering disconnection");
                 dc = decodeDC_PSEUDO(key, socketChannel);
@@ -92,8 +106,43 @@ class RequestProcessor {
         }
     }
 
+    private void decodeCO_CLIENT_TO_CLIENT(ByteBuffer byteBuffer) {
+        System.out.println(byteBuffer);
+        int sizeConnectTo = byteBuffer.getInt();
+
+        ByteBuffer destinataire = ByteBuffer.allocate(sizeConnectTo);
+        for (int i = 0; i < sizeConnectTo; i++) {
+            destinataire.put(byteBuffer.get());
+        }
+        destinataire.flip();
+        String dest = UTF8_charset.decode(destinataire).toString();
+        System.out.println("Dest = " + dest);
+
+        int sizeSrc = byteBuffer.getInt();
+        ByteBuffer src = ByteBuffer.allocate(sizeSrc);
+        for (int i = 0; i < sizeSrc; i++) {
+            src.put(byteBuffer.get());
+        }
+        src.flip();
+//        String srcString = UTF8_charset.decode(src).toString();
+//        System.out.println("Dest = "+srcString);
+
+
+        ByteBuffer buffOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
+        buffOut.put(CO_CLIENT_TO_CLIENT)
+                .putInt(sizeSrc)
+                .put(src);
+        buffOut.flip();
+        try {
+            clientMap.get(dest).write(buffOut);
+        } catch (IOException e) {
+            System.err.println("Error : Client closed connection before finished sending");
+            e.printStackTrace();
+        }
+    }
+
     private void cleanMapFromInvalidKeys() {
-        clientMap.keySet().removeIf(e -> remoteAddressToString(e).equals("???"));
+        clientMap.values().removeIf(e -> remoteAddressToString(e).equals("???"));
     }
 
     private boolean decodeD_LIST_CLIENT_CO(SocketChannel socketChannel) {
@@ -115,10 +164,17 @@ class RequestProcessor {
     }
 
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
-        System.out.println("Client " + clientMap.get(socketChannel) + " disconnected");
-        clientMap.remove(socketChannel);
+//        System.out.println("Client " + clientMap. + " disconnected");
+        final String[] pseudo = new String[1];
+        clientMap.forEach((p, sc) -> {
+            if (sc.equals(socketChannel)) {
+                pseudo[0] = p;
+            }
+        });
+
         try {
-            socketChannel.close();
+            clientMap.get(pseudo[0]).close();
+            clientMap.remove(pseudo[0]);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -135,7 +191,7 @@ class RequestProcessor {
             sendAnswerPseudoExists(true, socketChannel);
         } else {
             sendAnswerPseudoExists(false, socketChannel);
-            clientMap.put(socketChannel, pseudo);
+            clientMap.put(pseudo, socketChannel);
         }
     }
 
@@ -186,7 +242,7 @@ class RequestProcessor {
 
     private void writeOneMessageToAll(ByteBuffer byteBuffer, SocketChannel clientSocketChannel) {
         ByteBuffer bbOut = byteBuffer.duplicate();
-        clientMap.forEach((socketChannel, pseudo) -> {
+        clientMap.forEach((pseudo, socketChannel) -> {
             if (!clientSocketChannel.equals(socketChannel)) {
                 try {
                     while (bbOut.hasRemaining()) {
@@ -218,7 +274,7 @@ class RequestProcessor {
     }
 
     private boolean pseudoAlreadyExists(String pseudo) {
-        return clientMap.containsValue(pseudo);
+        return clientMap.containsKey(pseudo);
     }
 
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
@@ -229,11 +285,11 @@ class RequestProcessor {
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
-        clientMap.forEach((key, value) -> {
-                    byteBuffer.putInt(value.length())
-                            .put(UTF8_charset.encode(value))
-                            .putInt(remoteAddressToString(key).length())
-                            .put(UTF8_charset.encode(remoteAddressToString(key)));
+        clientMap.forEach((pseudo, socketChannel) -> {
+            byteBuffer.putInt(pseudo.length())
+                    .put(UTF8_charset.encode(pseudo))
+                    .putInt(remoteAddressToString(socketChannel).length())
+                    .put(UTF8_charset.encode(remoteAddressToString(socketChannel)));
                 }
         );
         return byteBuffer;
@@ -252,7 +308,7 @@ class RequestProcessor {
         total[0] += Byte.BYTES;
         total[0] += clientMap.size();
         clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
-            long clientSize = Integer.BYTES + value.length() + Integer.BYTES + key.toString().length();
+            long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
             total[0] += clientSize;
         });
         return total[0];
