@@ -30,9 +30,6 @@ public class Server {
     public Server(int port) throws IOException {
         serverSocketChannel = ServerSocketChannel.open();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(port);
-//        System.out.println(inetSocketAddress.getHostString());
-//        System.out.println(inetSocketAddress.getPort());
-//        System.out.println(inetSocketAddress);
         serverSocketChannel.bind(inetSocketAddress);
         selector = Selector.open();
         selectedKeys = selector.selectedKeys();

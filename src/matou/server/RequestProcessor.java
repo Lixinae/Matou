@@ -87,7 +87,6 @@ class RequestProcessor {
                 decodeM_ALL(byteBuffer, socketChannel);
                 System.out.println("Exiting envoie message all");
                 break;
-            // TODO Ajouter un paquet qui permet de connaitre les serveurSocketChannel de chaque client connecté
             case E_ADDR_SERV_CLIENT:
                 System.out.println("Entering envoie adresse serveur client");
                 decodeE_ADDR_SERV_CLIENT(byteBuffer, socketChannel);
@@ -174,15 +173,12 @@ class RequestProcessor {
         }
         destinataire.flip();
         String dest = UTF8_charset.decode(destinataire).toString();
-        System.out.println("Dest = " + dest);
-
         int sizeSrc = byteBuffer.getInt();
         ByteBuffer src = ByteBuffer.allocate(sizeSrc);
         for (int i = 0; i < sizeSrc; i++) {
             src.put(byteBuffer.get());
         }
         src.flip();
-
         ByteBuffer buffOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
         buffOut.put(CO_CLIENT_TO_CLIENT)
                 .putInt(sizeSrc)
@@ -197,12 +193,11 @@ class RequestProcessor {
     }
 
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
-//        System.out.println("Client " + clientMap. + " disconnected");
         String pseudo = findPseudoWithAdress(clientMap, socketChannel);
-        // TODO penser a supprimer de l'autre map
         try {
             clientMap.get(pseudo).close();
             clientMap.remove(pseudo);
+            clientMapServer.remove(pseudo);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -283,7 +278,6 @@ class RequestProcessor {
         });
     }
 
-    // TODO
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
         if (size <= 0) {
@@ -293,13 +287,6 @@ class RequestProcessor {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMapServer.size());
         //TODO A changer par la map avec les serveur socket Channel
-//        clientMap.forEach((pseudo, socketChannel) -> {
-//            byteBuffer.putInt(pseudo.length())
-//                    .put(UTF8_charset.encode(pseudo))
-//                    .putInt(remoteAddressToString(socketChannel).length())
-//                    .put(UTF8_charset.encode(remoteAddressToString(socketChannel)));
-//                }
-//        );
         StringBuilder sb = new StringBuilder();
         clientMapServer.forEach((pseudo, inetSocketAddress) -> {
             sb.delete(0, sb.length());
@@ -327,29 +314,18 @@ class RequestProcessor {
         }
     }
 
-    // TODO
     private long calculSizeBufferList() {
         final Long[] total = {0L};
         total[0] += Byte.BYTES;
-        //TODO A changer par la map avec les serveur socket Channel
         total[0] += Integer.BYTES;
         clientMapServer.forEach((key, value) -> {
-//            System.out.println("value = "+value);
             // Peut se simplifier mais cette forme est plus clair
             long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
             total[0] += clientSize;
         });
-
-//        total[0] += clientMap.size();
-//        clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
-//            long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
-//            total[0] += clientSize;
-//        });
-//        System.out.println(total[0]);
         return total[0];
     }
 
-    // TODO
     private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer, SocketChannel socketChannel) {
         System.out.println(byteBuffer);
         int sizeTotal = byteBuffer.getInt();
@@ -360,7 +336,8 @@ class RequestProcessor {
         tempo.flip();
         String fullChain = UTF8_charset.decode(tempo).toString();
         // Format 0:0:0:0:0:0:0:0:0:55620 par exemple
-        System.out.println(fullChain);
+//        System.out.println(fullChain);
+
         int splitIndex = fullChain.lastIndexOf(':');
         String host = fullChain.substring(0, splitIndex);
         int port = Integer.parseInt(fullChain.substring(splitIndex + 1));
