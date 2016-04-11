@@ -1,9 +1,9 @@
 package matou.server;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -37,7 +37,7 @@ class RequestProcessor {
     private final HashMap<String, SocketChannel> clientMap = new HashMap<>();
 
     // Permet de stocker les serverSocketChannel de chacun des clients
-    private final HashMap<String, ServerSocketChannel> clientMapServer = new HashMap<>();
+    private final HashMap<String, InetSocketAddress> clientMapServer = new HashMap<>();
 
 
     public RequestProcessor() {
@@ -90,7 +90,7 @@ class RequestProcessor {
             // TODO Ajouter un paquet qui permet de connaitre les serveurSocketChannel de chaque client connecté
             case E_ADDR_SERV_CLIENT:
                 System.out.println("Entering envoie adresse serveur client");
-                decodeE_ADDR_SERV_CLIENT(byteBuffer);
+                decodeE_ADDR_SERV_CLIENT(byteBuffer, socketChannel);
                 System.out.println("Exiting envoie adresse serveur client");
                 break;
 
@@ -201,21 +201,26 @@ class RequestProcessor {
 
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
 //        System.out.println("Client " + clientMap. + " disconnected");
-        final String[] pseudo = new String[1];
-        clientMap.forEach((p, sc) -> {
-            if (sc.equals(socketChannel)) {
-                pseudo[0] = p;
-            }
-        });
+        String pseudo = findPseudoWithAdress(clientMap, socketChannel);
 
         try {
-            clientMap.get(pseudo[0]).close();
-            clientMap.remove(pseudo[0]);
+            clientMap.get(pseudo).close();
+            clientMap.remove(pseudo);
         } catch (IOException e) {
             e.printStackTrace();
         }
         key.cancel();
         return true;
+    }
+
+    private String findPseudoWithAdress(HashMap<String, SocketChannel> input, SocketChannel socketChannel) {
+        final String[] pseudo = new String[1];
+        input.forEach((p, sc) -> {
+            if (sc.equals(socketChannel)) {
+                pseudo[0] = p;
+            }
+        });
+        return pseudo[0];
     }
 
     private void cleanMapFromInvalidKeys() {
@@ -239,8 +244,6 @@ class RequestProcessor {
         }
         return false;
     }
-
-
 
     private void decodeM_ALL(ByteBuffer byteBuffer, SocketChannel socketChannel) {
         int sizeName = byteBuffer.getInt();
@@ -283,7 +286,6 @@ class RequestProcessor {
         });
     }
 
-
     // TODO
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
@@ -294,13 +296,26 @@ class RequestProcessor {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
         //TODO A changer par la map avec les serveur socket Channel
-        clientMap.forEach((pseudo, socketChannel) -> {
+//        clientMap.forEach((pseudo, socketChannel) -> {
+//            byteBuffer.putInt(pseudo.length())
+//                    .put(UTF8_charset.encode(pseudo))
+//                    .putInt(remoteAddressToString(socketChannel).length())
+//                    .put(UTF8_charset.encode(remoteAddressToString(socketChannel)));
+//                }
+//        );
+        StringBuilder sb = new StringBuilder();
+        clientMapServer.forEach((pseudo, inetSocketAddress) -> {
+            sb.delete(0, sb.length());
+            sb.append(inetSocketAddress.getHostString())
+                    .append(":")
+                    .append(inetSocketAddress.getPort());
             byteBuffer.putInt(pseudo.length())
                     .put(UTF8_charset.encode(pseudo))
-                    .putInt(remoteAddressToString(socketChannel).length())
-                    .put(UTF8_charset.encode(remoteAddressToString(socketChannel)));
+                    .putInt(sb.length())
+                    .put(UTF8_charset.encode(sb.toString()));
                 }
         );
+
         return byteBuffer;
     }
 
@@ -318,15 +333,38 @@ class RequestProcessor {
         total[0] += Byte.BYTES;
         //TODO A changer par la map avec les serveur socket Channel
         total[0] += clientMap.size();
-        clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
+        clientMapServer.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
             long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
             total[0] += clientSize;
         });
+
+//        total[0] += clientMap.size();
+//        clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
+//            long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
+//            total[0] += clientSize;
+//        });
         return total[0];
     }
 
     // TODO
-    private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer) {
+    private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer, SocketChannel socketChannel) {
+
+        int sizeTotal = byteBuffer.getInt();
+        ByteBuffer tempo = ByteBuffer.allocate(sizeTotal);
+        for (int i = 0; i < sizeTotal; i++) {
+            tempo.put(byteBuffer.get());
+        }
+        String fullChain = UTF8_charset.decode(tempo).toString();
+        // Format 0:0:0:0:0:0:0:0:0:55620 par exemple
+        int splitIndex = fullChain.lastIndexOf(':');
+
+        String host = fullChain.substring(0, splitIndex);
+        int port = Integer.parseInt(fullChain.substring(splitIndex + 1));
+
+        String clientName = findPseudoWithAdress(clientMap, socketChannel);
+
+
+        clientMapServer.put(clientName, new InetSocketAddress(host, port));
     }
 
 

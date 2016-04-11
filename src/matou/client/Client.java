@@ -57,9 +57,16 @@ public class Client {
         socket.configureBlocking(false);
         serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
+        // TEST //
+        // Host = 0.0.0.0 , port donnee aleatoirement
+        // serverSocketChannel.getLocalAddress() =  null avant le bind
+//        serverSocketChannel.bind(serverSocketChannel.getLocalAddress()) =  serverSocketChannel.bind(null)
 
-        System.out.println(serverSocketChannel.getLocalAddress());
-        System.out.println(socket.getRemoteAddress());
+//
+//        socket.connect(new InetSocketAddress("0.0.0.0", 7777));
+//        System.out.println(serverSocketChannel.getLocalAddress());
+//        System.out.println(socket.getRemoteAddress());
+        // TEST//
 
         scan = new Scanner(System.in);
 

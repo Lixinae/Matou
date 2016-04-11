@@ -29,10 +29,16 @@ public class Server {
 
     public Server(int port) throws IOException {
         serverSocketChannel = ServerSocketChannel.open();
-        serverSocketChannel.bind(new InetSocketAddress(port));
+        InetSocketAddress inetSocketAddress = new InetSocketAddress(port);
+        System.out.println(inetSocketAddress.getHostString());
+        System.out.println(inetSocketAddress.getPort());
+        System.out.println(inetSocketAddress);
+        serverSocketChannel.bind(inetSocketAddress);
         selector = Selector.open();
         selectedKeys = selector.selectedKeys();
         requestProcessor = new RequestProcessor();
+
+
     }
 
     private static void usage() {
