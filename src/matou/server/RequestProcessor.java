@@ -3,6 +3,7 @@ package matou.server;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -25,12 +26,18 @@ class RequestProcessor {
 
     private final static byte R_PSEUDO = 10;
 
+    private static final byte E_ADDR_SERV_CLIENT = 11;
 
 //    private final static int TIME_OUT = 1000;
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
 
+
+    // Liste des clients connecté avec leurs adresses respectives sur lesquels le serveur peut répondre.
     private final HashMap<String, SocketChannel> clientMap = new HashMap<>();
+
+    // Permet de stocker les serverSocketChannel de chacun des clients
+    private final HashMap<String, ServerSocketChannel> clientMapServer = new HashMap<>();
 
 
     public RequestProcessor() {
@@ -58,37 +65,35 @@ class RequestProcessor {
                 System.out.println("Exiting decode pseudo");
                 break;
             case CO_CLIENT_TO_CLIENT:
-//                buffConnect.put(CO_CLIENT_TO_CLIENT)
-//                        .putInt(pseudoConnect.length())
-//                        .put(UTF8_charset.encode(pseudoConnect))
-//                        .putInt(nickname.length())
-//                        .put(UTF8_charset.encode(nickname));
                 System.out.println("Entering co client");
-
                 decodeCO_CLIENT_TO_CLIENT(byteBuffer);
                 System.out.println("Exiting co client");
                 break;
-
             case DC_PSEUDO:
                 System.out.println("Entering disconnection");
                 dc = decodeDC_PSEUDO(key, socketChannel);
                 System.out.println("Exiting disconnection");
                 break;
             case D_LIST_CLIENT_CO:
-                // TODO Test ça
                 System.out.println("Entering demand list client");
                 if (decodeD_LIST_CLIENT_CO(socketChannel)) {
+                    // Enorme erreur si on arrive ici
                     return;
                 }
                 System.out.println("Exiting demand list client");
                 break;
             case E_M_ALL:
-                // Send to each socketChannel connected
-                // Si socket en mode read -> attendre fin de la lecture et envoyer
                 System.out.println("Entering envoie message all");
                 decodeM_ALL(byteBuffer, socketChannel);
                 System.out.println("Exiting envoie message all");
                 break;
+            // TODO Ajouter un paquet qui permet de connaitre les serveurSocketChannel de chaque client connecté
+            case E_ADDR_SERV_CLIENT:
+                System.out.println("Entering envoie adresse serveur client");
+                decodeE_ADDR_SERV_CLIENT(byteBuffer);
+                System.out.println("Exiting envoie adresse serveur client");
+                break;
+
             default:
                 System.err.println("Error : Unkown code " + b);
                 break;
@@ -104,6 +109,59 @@ class RequestProcessor {
         if (!dc) {
             key.interestOps(SelectionKey.OP_READ);
         }
+    }
+
+
+    private void decodeE_PSEUDO(SocketChannel socketChannel, ByteBuffer byteBuffer) {
+        String pseudo = decodeE_PSEUDOannexe(byteBuffer);
+        if (null == pseudo) {
+            System.err.println("Error : Could not read name");
+        }
+        if (pseudoAlreadyExists(pseudo)) {
+            sendAnswerPseudoExists(true, socketChannel);
+        } else {
+            sendAnswerPseudoExists(false, socketChannel);
+            clientMap.put(pseudo, socketChannel);
+        }
+    }
+
+    private String decodeE_PSEUDOannexe(ByteBuffer byteBuffer) {
+        if (byteBuffer.remaining() < Integer.BYTES) {
+            System.err.println("Missing size of name");
+            return null;
+        }
+        int size = byteBuffer.getInt();
+        if (byteBuffer.remaining() < size) {
+            System.err.println("The message is incomplete");
+            return null;
+        }
+        ByteBuffer tempo = ByteBuffer.allocate(size);
+        tempo.put(byteBuffer);
+        tempo.flip();
+        return UTF8_charset.decode(tempo).toString();
+    }
+
+    private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
+        ByteBuffer bbOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+        bbOut.put(R_PSEUDO);
+        if (exists) {
+            bbOut.putInt(1);
+        } else {
+            bbOut.putInt(0);
+
+        }
+        bbOut.flip();
+        try {
+            while (bbOut.hasRemaining()) {
+                socketChannel.write(bbOut);
+            }
+        } catch (IOException e) {
+            System.err.println("Error : Client closed connection before sending finished");
+        }
+    }
+
+    private boolean pseudoAlreadyExists(String pseudo) {
+        return clientMap.containsKey(pseudo);
     }
 
     private void decodeCO_CLIENT_TO_CLIENT(ByteBuffer byteBuffer) {
@@ -141,6 +199,25 @@ class RequestProcessor {
         }
     }
 
+    private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
+//        System.out.println("Client " + clientMap. + " disconnected");
+        final String[] pseudo = new String[1];
+        clientMap.forEach((p, sc) -> {
+            if (sc.equals(socketChannel)) {
+                pseudo[0] = p;
+            }
+        });
+
+        try {
+            clientMap.get(pseudo[0]).close();
+            clientMap.remove(pseudo[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        key.cancel();
+        return true;
+    }
+
     private void cleanMapFromInvalidKeys() {
         clientMap.values().removeIf(e -> remoteAddressToString(e).equals("???"));
     }
@@ -163,57 +240,7 @@ class RequestProcessor {
         return false;
     }
 
-    private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
-//        System.out.println("Client " + clientMap. + " disconnected");
-        final String[] pseudo = new String[1];
-        clientMap.forEach((p, sc) -> {
-            if (sc.equals(socketChannel)) {
-                pseudo[0] = p;
-            }
-        });
 
-        try {
-            clientMap.get(pseudo[0]).close();
-            clientMap.remove(pseudo[0]);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        key.cancel();
-        return true;
-    }
-
-    private void decodeE_PSEUDO(SocketChannel socketChannel, ByteBuffer byteBuffer) {
-        String pseudo = decodeE_PSEUDO(byteBuffer);
-        if (null == pseudo) {
-            System.err.println("Error : Could not read name");
-        }
-        if (pseudoAlreadyExists(pseudo)) {
-            sendAnswerPseudoExists(true, socketChannel);
-        } else {
-            sendAnswerPseudoExists(false, socketChannel);
-            clientMap.put(pseudo, socketChannel);
-        }
-    }
-
-    private void sendAnswerPseudoExists(boolean exists, SocketChannel socketChannel) {
-        ByteBuffer bbOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-        bbOut.put(R_PSEUDO);
-        if (exists) {
-            bbOut.putInt(1);
-        } else {
-            bbOut.putInt(0);
-
-        }
-        bbOut.flip();
-        try {
-            while (bbOut.hasRemaining()) {
-                socketChannel.write(bbOut);
-            }
-        } catch (IOException e) {
-            System.err.println("Error : Client closed connection before sending finished");
-        }
-
-    }
 
     private void decodeM_ALL(ByteBuffer byteBuffer, SocketChannel socketChannel) {
         int sizeName = byteBuffer.getInt();
@@ -256,27 +283,8 @@ class RequestProcessor {
         });
     }
 
-    private String decodeE_PSEUDO(ByteBuffer byteBuffer) {
-        if (byteBuffer.remaining() < Integer.BYTES) {
-            System.err.println("Missing size of name");
-            return null;
-        }
-        int size = byteBuffer.getInt();
-        if (byteBuffer.remaining() < size) {
-            System.err.println("The message is incomplete");
-            return null;
-        }
-        ByteBuffer tempo = ByteBuffer.allocate(size);
-        tempo.put(byteBuffer);
-        tempo.flip();
-        return UTF8_charset.decode(tempo).toString();
 
-    }
-
-    private boolean pseudoAlreadyExists(String pseudo) {
-        return clientMap.containsKey(pseudo);
-    }
-
+    // TODO
     private ByteBuffer encodeE_LIST_CLIENT_CO() {
         Long size = calculSizeBufferList();
         if (size <= 0) {
@@ -285,6 +293,7 @@ class RequestProcessor {
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
+        //TODO A changer par la map avec les serveur socket Channel
         clientMap.forEach((pseudo, socketChannel) -> {
             byteBuffer.putInt(pseudo.length())
                     .put(UTF8_charset.encode(pseudo))
@@ -303,15 +312,21 @@ class RequestProcessor {
         }
     }
 
+    // TODO
     private long calculSizeBufferList() {
         final Long[] total = {0L};
         total[0] += Byte.BYTES;
+        //TODO A changer par la map avec les serveur socket Channel
         total[0] += clientMap.size();
         clientMap.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
             long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
             total[0] += clientSize;
         });
         return total[0];
+    }
+
+    // TODO
+    private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer) {
     }
 
 

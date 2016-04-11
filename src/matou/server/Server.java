@@ -126,7 +126,7 @@ public class Server {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
-        System.out.println("Server started");
+        System.out.println("Server started on " + serverSocketChannel.getLocalAddress());
         while (!Thread.interrupted()) {
 //            printKeys();
 //            System.out.println("Starting select");

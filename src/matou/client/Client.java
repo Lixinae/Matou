@@ -32,8 +32,12 @@ public class Client {
     boolean end = false;
     private String nickname;
     private HashMap<String, InetSocketAddress> mapClient;
+
+    // Devra etre une map de <String, ServerSocketChannel>
     private HashMap<String, SocketChannel> friend;
     private SocketChannel socket;
+
+    // Bricoler un paquet qui envoie l'adresse du serverSocketChannel
     private ServerSocketChannel serverSocketChannel;
     private int BUFFER_SIZE = 1024;
     private String messageAll = null;
@@ -53,6 +57,10 @@ public class Client {
         socket.configureBlocking(false);
         serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
+
+        System.out.println(serverSocketChannel.getLocalAddress());
+        System.out.println(socket.getRemoteAddress());
+
         scan = new Scanner(System.in);
 
     }
@@ -239,12 +247,21 @@ public class Client {
             buffSendACK.flip();
 
 
+
             SocketChannel socketACK = SocketChannel.open();
 
             // Le / est tout a fait normal ici
             System.out.println("Map get pseudo ack = " + mapClient.get(pseudoACK));
 
             // Erreur sur le connect "java.net.SocketException: Permission denied: connect"
+            // On ne peut pas co une socketChannel à une autre , il faut obligatoirement un serveur Socket channel.
+            // Le soucis de l'adresse stocké dans "mapClient" c'est que c'est l'adresse a laquel le serveur peut répondre
+            // et pas l'adresse à laquel un client peut se connecté à un autre
+            //
+            // Il faudrait donc que quand un client se co , on envoie sa serverSocketChannel au serveur qui va la stocker
+            // dans une map et que quand on demande la liste des client connecté , on renvoie cette adresse la et non pas
+            // celle de la socketChannel sur laquel le client est connecté
+
             socketACK.connect(mapClient.get(pseudoACK));
 
 
