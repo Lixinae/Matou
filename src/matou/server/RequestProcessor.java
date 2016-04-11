@@ -202,7 +202,7 @@ class RequestProcessor {
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
 //        System.out.println("Client " + clientMap. + " disconnected");
         String pseudo = findPseudoWithAdress(clientMap, socketChannel);
-
+        // TODO penser a supprimer de l'autre map
         try {
             clientMap.get(pseudo).close();
             clientMap.remove(pseudo);
