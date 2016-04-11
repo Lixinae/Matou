@@ -11,7 +11,7 @@ import java.util.Scanner;
 
 public class Client {
 
-    private final static Charset UTF8_charset = Charset.forName("UTF8");
+	private final static Charset UTF8_charset = Charset.forName("UTF8");
     /*byte pour que le serveur sache qu'on envoie son pseudo*/
     private final static byte E_PSEUDO = 1;
     /* connection et accuse de reception de la connection au client */
@@ -25,6 +25,7 @@ public class Client {
     /* Concerne l'envoie et la reception */
     private final static byte M_ALL = 9;
     private final static byte R_PSEUDO = 10;
+    private static final byte E_ADDR_SERV_CLIENT = 11;
 
     /*Le temps que doit attendre le programme entre deux actualisation de la liste*/
     private static final long ACTU_LIST_TIME_MILLIS = 1000 * 5;
@@ -83,10 +84,26 @@ public class Client {
         }
         Client client = new Client(args[0], Integer.parseInt(args[1]));
         client.pseudoRegister();
+        client.sendInfoServer();
         client.launch();
     }
 
-    private void pseudoRegister() throws IOException {
+    private void sendInfoServer() throws IOException {
+
+        String serverBeforeStrip = serverSocketChannel.getLocalAddress().toString();
+		ByteBuffer bInfoServer = UTF8_charset.encode(serverBeforeStrip.replace("/", ""));
+        ByteBuffer bInfoServerToServer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + serverBeforeStrip.length()-1);
+        System.out.println("s before strip = "+serverBeforeStrip);
+        bInfoServerToServer.put(E_ADDR_SERV_CLIENT)
+                .putInt(serverBeforeStrip.length()-1)
+                .put(bInfoServer);
+        bInfoServerToServer.flip();
+
+        socket.write(bInfoServerToServer);
+    	
+	}
+
+	private void pseudoRegister() throws IOException {
         while (!sendPseudo()) {
             System.out.println("le pseudo est deja pris.");
         }
