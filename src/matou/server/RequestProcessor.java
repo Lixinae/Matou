@@ -182,9 +182,6 @@ class RequestProcessor {
             src.put(byteBuffer.get());
         }
         src.flip();
-//        String srcString = UTF8_charset.decode(src).toString();
-//        System.out.println("Dest = "+srcString);
-
 
         ByteBuffer buffOut = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
         buffOut.put(CO_CLIENT_TO_CLIENT)
@@ -294,7 +291,7 @@ class RequestProcessor {
             return null;
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
-        byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMap.size());
+        byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMapServer.size());
         //TODO A changer par la map avec les serveur socket Channel
 //        clientMap.forEach((pseudo, socketChannel) -> {
 //            byteBuffer.putInt(pseudo.length())
@@ -309,10 +306,13 @@ class RequestProcessor {
             sb.append(inetSocketAddress.getHostString())
                     .append(":")
                     .append(inetSocketAddress.getPort());
+            String to_encode = sb.toString();
+
+
             byteBuffer.putInt(pseudo.length())
                     .put(UTF8_charset.encode(pseudo))
                     .putInt(sb.length())
-                    .put(UTF8_charset.encode(sb.toString()));
+                    .put(UTF8_charset.encode(to_encode));
                 }
         );
 
@@ -332,8 +332,10 @@ class RequestProcessor {
         final Long[] total = {0L};
         total[0] += Byte.BYTES;
         //TODO A changer par la map avec les serveur socket Channel
-        total[0] += clientMap.size();
-        clientMapServer.forEach((key, value) -> { // Peut se simplifier mais cette forme est plus clair
+        total[0] += Integer.BYTES;
+        clientMapServer.forEach((key, value) -> {
+//            System.out.println("value = "+value);
+            // Peut se simplifier mais cette forme est plus clair
             long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
             total[0] += clientSize;
         });
@@ -343,27 +345,26 @@ class RequestProcessor {
 //            long clientSize = Integer.BYTES + key.length() + Integer.BYTES + value.toString().length();
 //            total[0] += clientSize;
 //        });
+//        System.out.println(total[0]);
         return total[0];
     }
 
     // TODO
     private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer, SocketChannel socketChannel) {
-
+        System.out.println(byteBuffer);
         int sizeTotal = byteBuffer.getInt();
         ByteBuffer tempo = ByteBuffer.allocate(sizeTotal);
         for (int i = 0; i < sizeTotal; i++) {
             tempo.put(byteBuffer.get());
         }
+        tempo.flip();
         String fullChain = UTF8_charset.decode(tempo).toString();
         // Format 0:0:0:0:0:0:0:0:0:55620 par exemple
+        System.out.println(fullChain);
         int splitIndex = fullChain.lastIndexOf(':');
-
         String host = fullChain.substring(0, splitIndex);
         int port = Integer.parseInt(fullChain.substring(splitIndex + 1));
-
         String clientName = findPseudoWithAdress(clientMap, socketChannel);
-
-
         clientMapServer.put(clientName, new InetSocketAddress(host, port));
     }
 
