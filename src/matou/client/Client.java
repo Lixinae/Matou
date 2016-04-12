@@ -6,7 +6,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 
 public class Client {
@@ -30,14 +32,15 @@ public class Client {
     /*Le temps que doit attendre le programme entre deux actualisation de la liste*/
     private static final long ACTU_LIST_TIME_MILLIS = 1000 * 5;
     private final Scanner scan;
+    // TODO
+    private final List<Thread> tabThreadServer;
+    private final List<Thread> tabThreadClient;
     boolean end = false;
     private String nickname;
     private HashMap<String, InetSocketAddress> mapClient;
-
     // Devra etre une map de <String, ServerSocketChannel>
     private HashMap<String, SocketChannel> friends;
     private SocketChannel socket;
-
     // Bricoler un paquet qui envoie l'adresse du serverSocketChannel
     private ServerSocketChannel serverSocketChannel;
     private int BUFFER_SIZE = 1024;
@@ -61,6 +64,10 @@ public class Client {
         serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.bind(serverSocketChannel.getLocalAddress());
         scan = new Scanner(System.in);
+
+        // TODO
+        tabThreadServer = new ArrayList<>();
+        tabThreadClient = new ArrayList<>();
     }
 
     private static void usage() {
@@ -244,78 +251,100 @@ public class Client {
 
     private void send() throws IOException {
         if (messageAll != null) {
-            ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
-            ByteBuffer buffNickName = UTF8_charset.encode(nickname);
-
-            ByteBuffer buffSendAll = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + nickname.length() + Integer.BYTES + messageAll.length());
-            buffSendAll.put(M_ALL)
-                    .putInt(nickname.length())
-                    .put(buffNickName)
-                    .putInt(messageAll.length())
-                    .put(buffMessage);
-            buffSendAll.flip();
-            socket.write(buffSendAll);
-            messageAll = null;
+            sendMessageAll();
         }
         if (pseudoACK != null) {
-            ByteBuffer buffSendACK = ByteBuffer.allocate(BUFFER_SIZE);
-            buffSendACK.put(ACK_CO_CLIENT)
-                    .putInt(nickname.length())
-                    .put(UTF8_charset.encode(nickname));
-            buffSendACK.flip();
-            SocketChannel socketACK = SocketChannel.open();
-            socketACK.connect(mapClient.get(pseudoACK));
-            friends.put(pseudoACK, socketACK);
-
-            socketACK.write(buffSendACK);
-            System.out.println("Connection accepted");
-
-            clientClient(socketACK).start();
-            pseudoACK = null;
+            sendPseudoAck();
         }
         if (pseudoConnect != null) {
-            //envoyer demande a pseudo connect
-            System.out.println("Connecting");
-            ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
-            buffConnect.put(CO_CLIENT_TO_CLIENT)
-                    .putInt(pseudoConnect.length())
-                    .put(UTF8_charset.encode(pseudoConnect))
-                    .putInt(nickname.length())
-                    .put(UTF8_charset.encode(nickname));
-            buffConnect.flip();
-            ServeurClient().start();
-            socket.write(buffConnect);
-            //se mettre en mode serveur
-            pseudoConnect = null;
+            sendPseudoConnect();
         }
         if (fileName != null && userName != null) {
-            //verifier que le client est dans la liste d'ami
-            //lire dans filename
-            //envoyer ce qui est lu en thread
-            userName = null;
-            fileName = null;
+            sendFile();
         }
         if (messageToClient != null && dest != null) {
-            ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
-            buffSend.put(M_CLIENT_TO_CLIENT)
-                    .putInt(messageToClient.length())
-                    .put(UTF8_charset.encode(messageToClient));
-            buffSend.flip();
-            friends.forEach((key, value) -> {
-                if (key.equals(dest)) {
-                    try {
-                        value.write(buffSend);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            messageToClient = null;
-            dest = null;
+            sendMessageToClient();
         }
     }
 
-    private Thread ServeurClient() {
+    private void sendFile() {
+        //verifier que le client est dans la liste d'ami
+        //lire dans filename
+        //envoyer ce qui est lu en thread
+        userName = null;
+        fileName = null;
+    }
+
+    private void sendPseudoAck() throws IOException {
+        ByteBuffer buffSendACK = ByteBuffer.allocate(BUFFER_SIZE);
+        buffSendACK.put(ACK_CO_CLIENT)
+                .putInt(nickname.length())
+                .put(UTF8_charset.encode(nickname));
+        buffSendACK.flip();
+        SocketChannel socketACK = SocketChannel.open();
+        socketACK.connect(mapClient.get(pseudoACK));
+        friends.put(pseudoACK, socketACK);
+
+        socketACK.write(buffSendACK);
+        System.out.println("Connection accepted");
+
+        clientClient(socketACK).start();
+        pseudoACK = null;
+    }
+
+    private void sendPseudoConnect() throws IOException {
+        //envoyer demande a pseudo connect
+        System.out.println("Connecting");
+        ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
+        buffConnect.put(CO_CLIENT_TO_CLIENT)
+                .putInt(pseudoConnect.length())
+                .put(UTF8_charset.encode(pseudoConnect))
+                .putInt(nickname.length())
+                .put(UTF8_charset.encode(nickname));
+        buffConnect.flip();
+
+
+        serverClient().start();
+        socket.write(buffConnect);
+        //se mettre en mode serveur
+        pseudoConnect = null;
+    }
+
+    private void sendMessageToClient() {
+        ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
+        buffSend.put(M_CLIENT_TO_CLIENT)
+                .putInt(messageToClient.length())
+                .put(UTF8_charset.encode(messageToClient));
+        buffSend.flip();
+        friends.forEach((key, value) -> {
+            if (key.equals(dest)) {
+                try {
+                    value.write(buffSend);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        messageToClient = null;
+        dest = null;
+    }
+
+    private void sendMessageAll() throws IOException {
+        ByteBuffer buffMessage = UTF8_charset.encode(messageAll);
+        ByteBuffer buffNickName = UTF8_charset.encode(nickname);
+
+        ByteBuffer buffSendAll = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + nickname.length() + Integer.BYTES + messageAll.length());
+        buffSendAll.put(M_ALL)
+                .putInt(nickname.length())
+                .put(buffNickName)
+                .putInt(messageAll.length())
+                .put(buffMessage);
+        buffSendAll.flip();
+        socket.write(buffSendAll);
+        messageAll = null;
+    }
+
+    private Thread serverClient() {
         return new Thread(() -> {
             SocketChannel s;
             try {
@@ -324,23 +353,26 @@ public class Client {
                 ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
                 ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
                 if (null == (buff = readAll(buff, s))) {
+                    buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
                     // Securité si le client ferme la connection
-                    s.close();
-                    Thread.currentThread().interrupt();
+//                    s.close();
+//                    Thread.currentThread().interrupt();
                     return;
                 }
                 buff.flip();
                 byte b = buff.get();
                 if (b != ACK_CO_CLIENT) {
-                    System.out.println("erreur");
+                    System.out.println("Erreur");
                 }
                 int size = buff.getInt();
                 for (int i = 0; i < size; i++) {
                     buffName.put(buff.get());
                 }
                 buffName.flip();
-                friends.put(UTF8_charset.decode(buffName).toString(), s);
-                ReadClient(s);
+                String name = UTF8_charset.decode(buffName).toString();
+                friends.put(name, s);
+                System.out.println("Connection with " + name + " done");
+                readClient(s);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -350,15 +382,15 @@ public class Client {
     private Thread clientClient(SocketChannel s) {
         return new Thread(() -> {
             try {
-                ReadClient(s);
+                readClient(s);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
     }
 
-    private void ReadClient(SocketChannel s) throws IOException {
-        System.out.println("ReadClient");
+    private void readClient(SocketChannel s) throws IOException {
+        System.out.println("readClient");
         ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
         while (!Thread.interrupted()) {
             if ((buffRead = readAll(buffRead, s)) == null) {
@@ -544,6 +576,13 @@ public class Client {
         }
         System.out.println("Liste des amis connecté : ");
         friends.forEach((key, value) -> System.out.println(key));
+    }
+
+    private void endAllThread() {
+        System.out.println("Killing all living threads");
+        tabThreadServer.forEach(Thread::interrupt);
+        tabThreadClient.forEach(Thread::interrupt);
+        System.out.println("Exiting program");
     }
 
     private void listeCommande() {
