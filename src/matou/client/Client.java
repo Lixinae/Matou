@@ -122,8 +122,8 @@ public class Client {
         socket.write(bNickNameToServer);
 
         ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
-        //lis des donn�e, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
-        //dans tout le buffer il recommence a read.
+        //lis des donnee, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
+        //dans tout le buffer il recommence a lire.
         do {
             while (socket.read(bReceive) == 0) ;
             bReceive.flip();
