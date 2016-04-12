@@ -48,6 +48,7 @@ public class Client {
     private String userName = null;
     private String dest = null;
     private String messageToClient = null;
+    private boolean canAccept = false;
 
     public Client(String host, int port) throws IOException {
 
@@ -129,6 +130,7 @@ public class Client {
     // Si le buffer est trop petit , la taille est automatiquement augmenter
     // jusqu'a ce qu'il ne soit plus plein
     private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc) throws IOException {
+
         while (sc.read(bbIn) != -1) {
             if (bbIn.position() < bbIn.limit()) {
                 return bbIn;
@@ -141,12 +143,14 @@ public class Client {
                 return bbIn;
             }
         }
+
         return null;
     }
 
     public void launch() throws IOException {
         int size;
-        threadRead().start();
+        Thread tRead = threadRead();
+        tRead.start();
         long deb = System.currentTimeMillis();
         ByteBuffer buffByte = ByteBuffer.allocate(BUFFER_SIZE);
         ByteBuffer buffName;
@@ -161,6 +165,7 @@ public class Client {
             }
 
             if (null == (buffByte = readAll(buffByte, socket))) {
+                buffByte = ByteBuffer.allocate(BUFFER_SIZE);
                 continue;
             }
             buffByte.flip();
@@ -177,6 +182,7 @@ public class Client {
                         buffName.flip();
                         String user = UTF8_charset.decode(buffName).toString();
                         System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
+                        canAccept = true;
                         break;
                     case R_LIST_CLIENT_CO:
                         mapClient = new HashMap<>();
@@ -231,6 +237,8 @@ public class Client {
                 e.printStackTrace();
             }
         }
+        //
+        tRead.interrupt();
 
     }
 
@@ -258,7 +266,10 @@ public class Client {
             SocketChannel socketACK = SocketChannel.open();
             socketACK.connect(mapClient.get(pseudoACK));
             friends.put(pseudoACK, socketACK);
+
             socketACK.write(buffSendACK);
+            System.out.println("Connection accepted");
+
             clientClient(socketACK).start();
             pseudoACK = null;
         }
@@ -351,7 +362,7 @@ public class Client {
         ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
         while (!Thread.interrupted()) {
             if ((buffRead = readAll(buffRead, s)) == null) {
-                System.out.println("buffread == null");
+                buffRead = ByteBuffer.allocate(BUFFER_SIZE);
                 continue;
             }
             buffRead.flip();
@@ -402,11 +413,13 @@ public class Client {
     }
 
     private void actualiseListFriend() {
-        friends.forEach((key, value) -> {
-            if (!mapClient.containsKey(key)) {
-                friends.remove(key);
-            }
-        });
+//        friends.forEach((key, value) -> {
+//            if (!mapClient.containsKey(key)) {
+//                friends.remove(key);
+//            }
+//        });
+
+        friends.keySet().removeIf(k -> !mapClient.containsKey(k));
     }
 
     private Thread threadRead() {
@@ -454,13 +467,20 @@ public class Client {
                 }
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/accept")) {
-                    if (words.length < 2) {
-                        System.err.println("empty user");
-                    } else if (words.length > 2) {
-                        System.err.println("too much argument");
+                    if (canAccept) {
+                        if (words.length < 2) {
+                            System.err.println("empty user");
+                        } else if (words.length > 2) {
+                            System.err.println("too much argument");
+                        } else {
+                            pseudoACK = words[1];
+                            canAccept = false;
+                        }
                     } else {
-                        pseudoACK = words[1];
+                        System.err.println("Vous ne pouvez pas accepter de connexion si personne ne vous le demande");
                     }
+
+
                 }
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/connect")) {
