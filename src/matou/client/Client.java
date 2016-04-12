@@ -239,7 +239,6 @@ public class Client {
             buffByte.compact();
             try {
                 Thread.sleep(1); // millisieste -> sinon mange tout le cpu
-
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -516,16 +515,20 @@ public class Client {
                 }
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/connect")) {
-                    if (words.length < 2) {
-                        System.err.println("empty user");
-                    } else if (words.length > 2) {
-                        System.err.println("too much argument");
-                    } else {
-                        if (!friends.containsKey(words[1])) {
-                            pseudoConnect = words[1];
+                    if (!mapClient.isEmpty()) {
+                        if (words.length < 2) {
+                            System.err.println("empty user");
+                        } else if (words.length > 2) {
+                            System.err.println("too much argument");
                         } else {
-                            System.out.println("Vous etes deja connecte au client " + words[1]);
+                            if (!friends.containsKey(words[1])) {
+                                pseudoConnect = words[1];
+                            } else {
+                                System.out.println("Vous etes deja connecte au client " + words[1]);
+                            }
                         }
+                    } else {
+                        System.out.println("Il n'y a personne de connecté sur le serveur autre que vous");
                     }
                 }
                 ///////////////////////////////////////////////////////////
