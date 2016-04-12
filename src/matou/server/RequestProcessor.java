@@ -164,7 +164,7 @@ class RequestProcessor {
     }
 
     private void decodeCO_CLIENT_TO_CLIENT(ByteBuffer byteBuffer) {
-        System.out.println(byteBuffer);
+//        System.out.println(byteBuffer);
         int sizeConnectTo = byteBuffer.getInt();
 
         ByteBuffer destinataire = ByteBuffer.allocate(sizeConnectTo);

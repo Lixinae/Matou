@@ -35,7 +35,7 @@ public class Client {
     private HashMap<String, InetSocketAddress> mapClient;
 
     // Devra etre une map de <String, ServerSocketChannel>
-    private HashMap<String, SocketChannel> friend;
+    private HashMap<String, SocketChannel> friends;
     private SocketChannel socket;
 
     // Bricoler un paquet qui envoie l'adresse du serverSocketChannel
@@ -52,7 +52,7 @@ public class Client {
     public Client(String host, int port) throws IOException {
 
         mapClient = new HashMap<>();
-        friend = new HashMap<>();
+        friends = new HashMap<>();
         socket = SocketChannel.open();
         socket.connect(new InetSocketAddress(host, port));
         socket.configureBlocking(false);
@@ -257,7 +257,7 @@ public class Client {
             buffSendACK.flip();
             SocketChannel socketACK = SocketChannel.open();
             socketACK.connect(mapClient.get(pseudoACK));
-            friend.put(pseudoACK, socketACK);
+            friends.put(pseudoACK, socketACK);
             socketACK.write(buffSendACK);
             clientClient(socketACK).start();
             pseudoACK = null;
@@ -290,7 +290,7 @@ public class Client {
                     .putInt(messageToClient.length())
                     .put(UTF8_charset.encode(messageToClient));
             buffSend.flip();
-            friend.forEach((key, value) -> {
+            friends.forEach((key, value) -> {
                 if (key.equals(dest)) {
                     try {
                         value.write(buffSend);
@@ -328,7 +328,7 @@ public class Client {
                     buffName.put(buff.get());
                 }
                 buffName.flip();
-                friend.put(UTF8_charset.decode(buffName).toString(), s);
+                friends.put(UTF8_charset.decode(buffName).toString(), s);
                 ReadClient(s);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -364,7 +364,7 @@ public class Client {
                         bMessage.put(buffRead.get());
                     }
                     bMessage.flip();
-                    friend.forEach((key, value) -> {
+                    friends.forEach((key, value) -> {
                         if (value.equals(s)) {
                             System.out.println("[private] " + key + " : " + UTF8_charset.decode(bMessage));
                         }
@@ -402,9 +402,9 @@ public class Client {
     }
 
     private void actualiseListFriend() {
-        friend.forEach((key, value) -> {
+        friends.forEach((key, value) -> {
             if (!mapClient.containsKey(key)) {
-                friend.remove(key);
+                friends.remove(key);
             }
         });
     }
@@ -469,7 +469,7 @@ public class Client {
                     } else if (words.length > 2) {
                         System.err.println("too much argument");
                     } else {
-                        if (!friend.containsKey(words[1])) {
+                        if (!friends.containsKey(words[1])) {
                             pseudoConnect = words[1];
                         } else {
                             System.out.println("Vous etes deja connecte au client " + words[1]);
@@ -487,6 +487,12 @@ public class Client {
                         fileName = words[2];
                     }
                 }
+                ///////////////////////////////////////////////////////////
+                else if (words[0].equals("/friends")) {
+                    printFriends();
+                }
+
+
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/exit")) {
                     ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
@@ -511,6 +517,15 @@ public class Client {
         });
     }
 
+    private void printFriends() {
+        if (friends.isEmpty()) {
+            System.out.println("Désolé, vous n'avez pas d'amis connecté");
+            return;
+        }
+        System.out.println("Liste des amis connecté : ");
+        friends.forEach((key, value) -> System.out.println(key));
+    }
+
     private void listeCommande() {
         System.out.println("voici les commandes utilisateur :\n"
                 + "/commandes pour lister les commande\n"
@@ -519,6 +534,7 @@ public class Client {
                 + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
                 + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
                 + "/file nomDuFichier pseudo pour envoyer un fichier a pseudo\n"
+                + "/friends affiche la liste des personnes avec qui on est connecté\n"
                 + "/exit pour quittez la messagerie");
     }
 }
