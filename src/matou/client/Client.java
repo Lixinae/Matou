@@ -558,6 +558,7 @@ public class Client {
                     }
                     end = true;
                     scan.close();
+                    endAllThread();
                     break;
                 }
                 ///////////////////////////////////////////////////////////
