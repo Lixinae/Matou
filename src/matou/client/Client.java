@@ -137,7 +137,6 @@ public class Client {
     // Si le buffer est trop petit , la taille est automatiquement augmenter
     // jusqu'a ce qu'il ne soit plus plein
     private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc) throws IOException {
-
         while (sc.read(bbIn) != -1) {
             if (bbIn.position() < bbIn.limit()) {
                 return bbIn;
@@ -150,7 +149,6 @@ public class Client {
                 return bbIn;
             }
         }
-
         return null;
     }
 
@@ -177,7 +175,9 @@ public class Client {
                     continue;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Erreur lors de lecture d'un paquet du serveur , Serveur deconnecté");
+                endAllThread(); // TODO bien ajouter les threads créé dans la liste
+                return;
             }
             buffByte.flip();
             while (buffByte.hasRemaining()) {
