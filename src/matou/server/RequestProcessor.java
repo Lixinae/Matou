@@ -57,7 +57,6 @@ class RequestProcessor {
             return;
         }
         byte b = byteBuffer.get();
-        System.out.println("byte = " + b);
         switch (b) {
             case E_PSEUDO:
                 System.out.println("Entering decode pseudo");
@@ -101,7 +100,6 @@ class RequestProcessor {
         // // Si le client spam le serveur
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
-
             System.err.println("This should only happen if the server is spammed by a client");
             processRequest(key);
         }
@@ -164,7 +162,6 @@ class RequestProcessor {
     }
 
     private void decodeCO_CLIENT_TO_CLIENT(ByteBuffer byteBuffer) {
-//        System.out.println(byteBuffer);
         int sizeConnectTo = byteBuffer.getInt();
 
         ByteBuffer destinataire = ByteBuffer.allocate(sizeConnectTo);
@@ -217,7 +214,13 @@ class RequestProcessor {
     }
 
     private void cleanMapFromInvalidKeys() {
+
         clientMap.values().removeIf(e -> remoteAddressToString(e).equals("???"));
+        if (clientMapServer.size() > 0 && clientMap.size() > 0) {
+            if (clientMapServer.size() != clientMap.size()) {
+                System.err.println("Map de taille différentes");
+            }
+        }
     }
 
     private boolean decodeD_LIST_CLIENT_CO(SocketChannel socketChannel) {
@@ -287,7 +290,6 @@ class RequestProcessor {
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate(size.intValue());
         byteBuffer.put(R_LIST_CLIENT_CO).putInt(clientMapServer.size());
-        //TODO A changer par la map avec les serveur socket Channel
         StringBuilder sb = new StringBuilder();
         clientMapServer.forEach((pseudo, inetSocketAddress) -> {
             sb.delete(0, sb.length());
@@ -295,8 +297,6 @@ class RequestProcessor {
                     .append(":")
                     .append(inetSocketAddress.getPort());
             String to_encode = sb.toString();
-
-
             byteBuffer.putInt(pseudo.length())
                     .put(UTF8_charset.encode(pseudo))
                     .putInt(sb.length())
@@ -328,7 +328,6 @@ class RequestProcessor {
     }
 
     private void decodeE_ADDR_SERV_CLIENT(ByteBuffer byteBuffer, SocketChannel socketChannel) {
-        System.out.println(byteBuffer);
         int sizeTotal = byteBuffer.getInt();
         ByteBuffer tempo = ByteBuffer.allocate(sizeTotal);
         for (int i = 0; i < sizeTotal; i++) {
@@ -336,8 +335,6 @@ class RequestProcessor {
         }
         tempo.flip();
         String fullChain = UTF8_charset.decode(tempo).toString();
-        // Format 0:0:0:0:0:0:0:0:0:55620 par exemple
-//        System.out.println(fullChain);
 
         int splitIndex = fullChain.lastIndexOf(':');
         String host = fullChain.substring(0, splitIndex);
