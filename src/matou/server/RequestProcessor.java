@@ -13,27 +13,36 @@ import java.util.HashMap;
  * Created by Narex on 09/04/2016.
  */
 class RequestProcessor {
-
+    /*                                    */
     /* Codes pour la reception de paquets */
+    /*                                    */
+
+    /* Recuperation du pseudo que le client envoie */
     private final static byte E_PSEUDO = 1;
-    private static final byte CO_CLIENT_TO_CLIENT = 2;
+    /* Demande d'une connection d'un client à un autre */
+    private final static byte CO_CLIENT_TO_CLIENT = 2;
+    /* Demande de deconnection d'un client */
     private final static byte DC_PSEUDO = 6;
+    /* Demande la liste des clients */
     private final static byte D_LIST_CLIENT_CO = 7;
+    /* Demande d'envoie à tous */
     private final static byte E_M_ALL = 9;
-
-    /* Code pour l'envoie de paquets */
-    private final static byte R_LIST_CLIENT_CO = 8;
-
-    private final static byte R_PSEUDO = 10;
-
+    /* Reception de l'adresse server du client */
     private static final byte E_ADDR_SERV_CLIENT = 11;
 
-//    private final static int TIME_OUT = 1000;
+    /*                               */
+    /* Code pour l'envoie de paquets */
+    /*                               */
+
+    /* Reponse a la demande de la liste des clients*/
+    private final static byte R_LIST_CLIENT_CO = 8;
+
+    /* Reponse du serveur au client sur la disponibilite de son pseudo*/
+    private final static byte R_PSEUDO = 10;
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
 
-
-    // Liste des clients connecté avec leurs adresses respectives sur lesquels le serveur peut répondre.
+    // Liste des clients connecte avec leurs adresses respectives sur lesquels le serveur peut répondre.
     private final HashMap<String, SocketChannel> clientMap = new HashMap<>();
 
     // Permet de stocker les serverSocketChannel de chacun des clients
@@ -44,9 +53,9 @@ class RequestProcessor {
 
     }
 
-    void processRequest(SelectionKey key) {
+    public void processRequest(SelectionKey key) {
 
-        cleanMapFromInvalidKeys();
+        cleanMapFromInvalidElements();
 
         SocketChannel socketChannel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
@@ -96,8 +105,8 @@ class RequestProcessor {
                 System.err.println("Error : Unkown code " + b);
                 break;
         }
-        // TODO faire attention a recursivite -> ne devrait pas y avoir de soucis mais on ne sais jamais
-        // // Si le client spam le serveur
+
+        // Si le client spam le serveur
         // -> analyser ce qui reste dans le bytebuffer
         if (byteBuffer.hasRemaining()) {
             System.err.println("This should only happen if the server is spammed by a client");
@@ -107,7 +116,6 @@ class RequestProcessor {
             key.interestOps(SelectionKey.OP_READ);
         }
     }
-
 
     private void decodeE_PSEUDO(SocketChannel socketChannel, ByteBuffer byteBuffer) {
         String pseudo = decodeE_PSEUDOannexe(byteBuffer);
@@ -145,7 +153,6 @@ class RequestProcessor {
             bbOut.putInt(1);
         } else {
             bbOut.putInt(0);
-
         }
         bbOut.flip();
         try {
@@ -213,9 +220,11 @@ class RequestProcessor {
         return pseudo[0];
     }
 
-    private void cleanMapFromInvalidKeys() {
+    private void cleanMapFromInvalidElements() {
 
         clientMap.values().removeIf(e -> remoteAddressToString(e).equals("???"));
+        clientMapServer.keySet().removeIf(s -> !clientMap.containsKey(s));
+
         if (clientMapServer.size() > 0 && clientMap.size() > 0) {
             if (clientMapServer.size() != clientMap.size()) {
                 System.err.println("Map de taille différentes");
@@ -234,7 +243,6 @@ class RequestProcessor {
             while (bbOut.hasRemaining()) {
                 socketChannel.write(bbOut);
             }
-
         } catch (IOException e) {
             System.err.println("Client closed connection before finishing sending");
         }
@@ -275,7 +283,7 @@ class RequestProcessor {
                         socketChannel.write(bbOut);
                     }
                 } catch (IOException e) {
-                    System.err.println("Error : Could not write on channel");
+                    System.err.println("Error : Could not write on channel of client " + pseudo);
                 }
                 bbOut.rewind(); // Remet la position au début pour une réutilisation
             }
@@ -296,6 +304,7 @@ class RequestProcessor {
             sb.append(inetSocketAddress.getHostString())
                     .append(":")
                     .append(inetSocketAddress.getPort());
+
             String to_encode = sb.toString();
             byteBuffer.putInt(pseudo.length())
                     .put(UTF8_charset.encode(pseudo))
@@ -303,7 +312,6 @@ class RequestProcessor {
                     .put(UTF8_charset.encode(to_encode));
                 }
         );
-
         return byteBuffer;
     }
 
@@ -342,6 +350,4 @@ class RequestProcessor {
         String clientName = findPseudoWithAdress(clientMap, socketChannel);
         clientMapServer.put(clientName, new InetSocketAddress(host, port));
     }
-
-
 }

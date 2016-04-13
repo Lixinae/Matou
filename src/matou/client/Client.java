@@ -14,7 +14,7 @@ import java.util.Scanner;
 public class Client {
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
-    
+
     /*byte pour que le serveur sache qu'on envoie son pseudo*/
     private final static byte E_PSEUDO = 1;
     /* connection et accuse de reception de la connection au client */
@@ -24,8 +24,8 @@ public class Client {
     private final static byte M_CLIENT_TO_CLIENT = 4;
     private final static byte F_CLIENT_TO_CLIENT = 5;
     /*deconnection du client*/
-	private final static byte DC_PSEUDO = 6;
-	/*envoie et reception de la liste des clients*/
+    private final static byte DC_PSEUDO = 6;
+    /*envoie et reception de la liste des clients*/
     private final static byte D_LIST_CLIENT_CO = 7;
     private final static byte R_LIST_CLIENT_CO = 8;
     /* Concerne l'envoie et la reception */
@@ -37,24 +37,20 @@ public class Client {
 
     /*Le temps que doit attendre le programme entre deux actualisation de la liste*/
     private final static long ACTU_LIST_TIME_MILLIS = 1000 * 5;
-    
+
     private final static int BUFFER_SIZE = 1024;
-    
+
     private final Scanner scan;
-    
+
     private final List<Thread> tabThreadServer;
     private final List<Thread> tabThreadClient;
-    
+    private final HashMap<String, SocketChannel> friends;
+    private final SocketChannel socket;
+    private final ServerSocketChannel serverSocketChannel;
     private String nickname;
-    
     /*map des client et des amis, mapClient ne peux pas etre final
      * car il est recrer a chaque fois que l'on actualise la liste*/
     private HashMap<String, InetSocketAddress> mapClient;
-    private final HashMap<String, SocketChannel> friends;
-    
-    private final SocketChannel socket;
-    private final ServerSocketChannel serverSocketChannel;
-    
     private String messageAll = null;
     private String pseudoACK = null;
     private String pseudoConnect = null;
@@ -62,7 +58,7 @@ public class Client {
     private String userName = null;
     private String dest = null;
     private String messageToClient = null;
-    
+
     private boolean canAccept = false;
     private boolean end = false;
 
@@ -94,29 +90,28 @@ public class Client {
         Client client = new Client(args[0], Integer.parseInt(args[1]));
         client.launch();
     }
-    
-    public void launch() throws IOException{
-	    pseudoRegister();
-	    sendInfoServer();
-	    Thread tRead = threadRead();
-	    tRead.start();
-	    //TODO insert tRead dans liste des threads
-	    receiveServer();
+
+    public void launch() throws IOException {
+        pseudoRegister();
+        sendInfoServer();
+        Thread tRead = threadRead();
+        tRead.start();
+        //TODO insert tRead dans liste des threads
+        receiveServer();
     }
-    
+
     private void sendInfoServer() throws IOException {
 
         String serverBeforeStrip = serverSocketChannel.getLocalAddress().toString();
         ByteBuffer bInfoServer = UTF8_charset.encode(serverBeforeStrip.replace("/", ""));
         ByteBuffer bInfoServerToServer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + serverBeforeStrip.length() - 1);
-        
+
         bInfoServerToServer.put(E_ADDR_SERV_CLIENT)
                 .putInt(serverBeforeStrip.length() - 1)
                 .put(bInfoServer);
         bInfoServerToServer.flip();
 
         socket.write(bInfoServerToServer);
-
     }
 
     private void pseudoRegister() throws IOException {
@@ -135,22 +130,21 @@ public class Client {
                     .putInt(tmp.length())
                     .put(bNickName);
             bNickNameToServer.flip();
-            socket.write(bNickNameToServer); 
+            socket.write(bNickNameToServer);
             //lis des donnee, cherche le byte R_PSEUDO et jete le reste, s'il ne la pas trouver
             //dans tout le buffer il recommence a lire.
             ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
             do {
-                while (socket.read(bReceive) == 0);
+                while (socket.read(bReceive) == 0) ;
                 bReceive.flip();
                 while (bReceive.get() != R_PSEUDO && bReceive.hasRemaining()) ;
             } while (!bReceive.hasRemaining());
             int test = bReceive.getInt();
-            if(test==0){
-            	nickname = tmp;
-            	return true;
-            }
-            else{
-            	return false;
+            if (test == 0) {
+                nickname = tmp;
+                return true;
+            } else {
+                return false;
             }
         }
         throw new IllegalStateException("nickname never send");
@@ -182,14 +176,14 @@ public class Client {
             if (end) {
                 break;
             }
-            
+
             send();
-            
+
             if (System.currentTimeMillis() - deb > ACTU_LIST_TIME_MILLIS) {
                 demandeList();
                 deb = System.currentTimeMillis();
             }
-            
+
             try {
                 if (null == (buffByte = readAll(buffByte, socket))) {
                     buffByte = ByteBuffer.allocate(BUFFER_SIZE);
@@ -205,13 +199,13 @@ public class Client {
                 Byte b = buffByte.get();
                 switch (b) {
                     case CO_CLIENT_TO_CLIENT:
-						decodeCoClient(buffByte);
+                        decodeCoClient(buffByte);
                         break;
                     case R_LIST_CLIENT_CO:
-                    	decodeRList(buffByte);
+                        decodeRList(buffByte);
                         break;
                     case M_ALL:
-                    	decodeMessageAll(buffByte);
+                        decodeMessageAll(buffByte);
                         break;
                     default:
                         System.err.println("Error : Unkown code " + b);
@@ -227,62 +221,62 @@ public class Client {
         }
     }
 
-	private void decodeMessageAll(ByteBuffer buffByte) {
-		int size;
-		size = buffByte.getInt();
-		ByteBuffer buffPseudo = ByteBuffer.allocate(size);
-		for (int i = 0; i < size; i++) {
-		    buffPseudo.put(buffByte.get());
-		}
+    private void decodeMessageAll(ByteBuffer buffByte) {
+        int size;
+        size = buffByte.getInt();
+        ByteBuffer buffPseudo = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            buffPseudo.put(buffByte.get());
+        }
 
-		size = buffByte.getInt();
-		ByteBuffer buffMessenger = ByteBuffer.allocate(size);
-		for (int i = 0; i < size; i++) {
-		    buffMessenger.put(buffByte.get());
-		}
+        size = buffByte.getInt();
+        ByteBuffer buffMessenger = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            buffMessenger.put(buffByte.get());
+        }
 
-		buffPseudo.flip();
-		buffMessenger.flip();
-		System.out.println("[all] " + UTF8_charset.decode(buffPseudo) + " : " + UTF8_charset.decode(buffMessenger));
-	}
+        buffPseudo.flip();
+        buffMessenger.flip();
+        System.out.println("[all] " + UTF8_charset.decode(buffPseudo) + " : " + UTF8_charset.decode(buffMessenger));
+    }
 
-	private void decodeCoClient(ByteBuffer buffByte) {
-		int size;
-		ByteBuffer buffName;
-		size = buffByte.getInt();
-		buffName = ByteBuffer.allocate(size);
-		for (int i = 0; i < size; i++) {
-		    buffName.put(buffByte.get());
-		}
-		buffName.flip();
-		String user = UTF8_charset.decode(buffName).toString();
-		System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
-		canAccept = true;
-	}
+    private void decodeCoClient(ByteBuffer buffByte) {
+        int size;
+        ByteBuffer buffName;
+        size = buffByte.getInt();
+        buffName = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            buffName.put(buffByte.get());
+        }
+        buffName.flip();
+        String user = UTF8_charset.decode(buffName).toString();
+        System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
+        canAccept = true;
+    }
 
-	private void decodeRList(ByteBuffer buffByte) {
-		int size;
-		mapClient = new HashMap<>();
-		for (size=buffByte.getInt() ; size>0 ; size--) {
-		    int sizePseudo = buffByte.getInt();
-		    ByteBuffer buffClient = ByteBuffer.allocate(sizePseudo);
-		    for (int i = 0; i < sizePseudo; i++) {
-		        buffClient.put(buffByte.get());
-		    }
+    private void decodeRList(ByteBuffer buffByte) {
+        int size;
+        mapClient = new HashMap<>();
+        for (size = buffByte.getInt(); size > 0; size--) {
+            int sizePseudo = buffByte.getInt();
+            ByteBuffer buffClient = ByteBuffer.allocate(sizePseudo);
+            for (int i = 0; i < sizePseudo; i++) {
+                buffClient.put(buffByte.get());
+            }
 
-		    int sizeSocket = buffByte.getInt();
-		    ByteBuffer buffSocket = ByteBuffer.allocate(sizeSocket);
-		    for (int i = 0; i < sizeSocket; i++) {
-		        buffSocket.put(buffByte.get());
-		    }
-		    buffSocket.flip();
-		    buffClient.flip();
-		    String socketClient = UTF8_charset.decode(buffSocket).toString();
-		    String nameClient = UTF8_charset.decode(buffClient).toString();
-		    addList(socketClient, nameClient);
-		}
-		actualiseListFriend();
-	}
+            int sizeSocket = buffByte.getInt();
+            ByteBuffer buffSocket = ByteBuffer.allocate(sizeSocket);
+            for (int i = 0; i < sizeSocket; i++) {
+                buffSocket.put(buffByte.get());
+            }
+            buffSocket.flip();
+            buffClient.flip();
+            String socketClient = UTF8_charset.decode(buffSocket).toString();
+            String nameClient = UTF8_charset.decode(buffClient).toString();
+            addList(socketClient, nameClient);
+        }
+        actualiseListFriend();
+    }
 
     private void send() {
         if (messageAll != null) {
@@ -341,7 +335,7 @@ public class Client {
 
         friends.put(pseudoACK, socketACK);
         System.out.println("Connexion accepter");
-        System.out.println("Vous etes maintenant connecter avec "+pseudoACK);
+        System.out.println("Vous etes maintenant connecter avec " + pseudoACK);
         Thread tmp = clientClient(socketACK);
         //tabThreadClient.add(tmp);
         tmp.start();
@@ -370,7 +364,7 @@ public class Client {
         }
         pseudoConnect = null;
     }
-    
+
     private void sendFile() {
         //verifier que le client est dans la liste d'ami
         //lire dans filename
@@ -407,7 +401,7 @@ public class Client {
                 ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
                 ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
                 if (null == (buff = readAll(buff, s))) {
-                	s.close();
+                    s.close();
                     Thread.currentThread().interrupt();
                     return;
                 }
@@ -445,11 +439,11 @@ public class Client {
         ByteBuffer buffRead = ByteBuffer.allocate(BUFFER_SIZE);
         while (!Thread.interrupted()) {
             if ((buffRead = readAll(buffRead, s)) == null) {
-            	friends.forEach((name, socketFriend) -> {
-	                if (socketFriend.equals(s)) {
-	                    System.out.println("client "+name+" s'est deconnecter");
-	                }
-            	});
+                friends.forEach((name, socketFriend) -> {
+                    if (socketFriend.equals(s)) {
+                        System.out.println("client " + name + " s'est deconnecter");
+                    }
+                });
                 Thread.currentThread().interrupt();
                 return;
             }
@@ -514,7 +508,7 @@ public class Client {
                     if (words.length < 2) {
                         System.err.println("Vous n'avez pas mis de message");
                     }
-                    messageAll = constructMessage(1,words);
+                    messageAll = constructMessage(1, words);
                 }
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/commandes")) {
@@ -527,12 +521,11 @@ public class Client {
                     }
                     dest = words[1];
                     if (friends.containsKey(dest)) {
-                        messageToClient = constructMessage(2,words);
+                        messageToClient = constructMessage(2, words);
                     } else {
                         if (mapClient.containsKey(dest)) {
                             System.out.println("Il faut vous connecter au client " + dest + " avant de lui envoyer des messages privee");
-                        } 
-                        else {
+                        } else {
                             System.out.println("Le client " + dest + " n'existe pas");
                         }
                     }
@@ -557,25 +550,20 @@ public class Client {
                     if (!mapClient.isEmpty()) {
                         if (words.length < 2) {
                             System.err.println("Il faut donner un nom d'utilisateur sur lequel se connecter");
-                        }
-                        else if (words.length > 2) {
+                        } else if (words.length > 2) {
                             System.err.println("Trop d'argument , format /connect user");
-                        }
-                        else {
+                        } else {
                             if (!friends.containsKey(words[1])) {
                                 if (mapClient.containsKey(words[1])) {
                                     pseudoConnect = words[1];
-                                } 
-                                else {
+                                } else {
                                     System.out.println("Le client " + words[1] + " n'existe pas");
                                 }
-                            } 
-                            else {
+                            } else {
                                 System.out.println("Vous etes deja connecte au client " + words[1]);
                             }
                         }
-                    } 
-                    else {
+                    } else {
                         System.out.println("Il n'y a personne de connecter sur le serveur autre que vous");
                     }
                 }
@@ -593,7 +581,7 @@ public class Client {
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/friends")) {
                     printFriends();
-                } 
+                }
                 ///////////////////////////////////////////////////////////
                 else if (words[0].equals("/clients")) {
                     printClients();
@@ -612,30 +600,30 @@ public class Client {
         });
     }
 
-	private void exitClient() {
-		ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
-		b.put(DC_PSEUDO);
-		b.flip();
-		try {
-		    socket.write(b);
-		} catch (IOException e) {
+    private void exitClient() {
+        ByteBuffer b = ByteBuffer.allocate(Byte.BYTES);
+        b.put(DC_PSEUDO);
+        b.flip();
+        try {
+            socket.write(b);
+        } catch (IOException e) {
             System.err.println("Erreur lors de la deconnection, serveur deconnecter");
-		}
-		end = true;
-		scan.close();
-		endAllThread();
-	}
+        }
+        end = true;
+        scan.close();
+        endAllThread();
+    }
 
-	private String constructMessage(int debIter,String[] words) {
-		StringBuilder b = new StringBuilder();
-		String sep = "";
-		for (int i = debIter; i < words.length; i++) {
-		    b.append(sep);
-		    b.append(words[i]);
-		    sep = " ";
-		}
-		return b.toString();
-	}
+    private String constructMessage(int debIter, String[] words) {
+        StringBuilder b = new StringBuilder();
+        String sep = "";
+        for (int i = debIter; i < words.length; i++) {
+            b.append(sep);
+            b.append(words[i]);
+            sep = " ";
+        }
+        return b.toString();
+    }
 
     private void printFriends() {
         if (friends.isEmpty()) {
