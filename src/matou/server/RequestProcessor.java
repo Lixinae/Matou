@@ -164,6 +164,8 @@ class RequestProcessor {
         }
     }
 
+
+    // TODO A garder
     private boolean pseudoAlreadyExists(String pseudo) {
         return clientMap.containsKey(pseudo);
     }
@@ -196,6 +198,7 @@ class RequestProcessor {
         }
     }
 
+    // TODO A garder
     private boolean decodeDC_PSEUDO(SelectionKey key, SocketChannel socketChannel) {
         String pseudo = findPseudoWithAdress(clientMap, socketChannel);
         System.out.println("Disconnecting client : " + pseudo);
@@ -210,6 +213,7 @@ class RequestProcessor {
         return true;
     }
 
+    // TODO A garder
     private String findPseudoWithAdress(HashMap<String, SocketChannel> input, SocketChannel socketChannel) {
         final String[] pseudo = new String[1];
         input.forEach((p, sc) -> {

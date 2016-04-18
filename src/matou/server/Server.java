@@ -91,6 +91,7 @@ public class Server {
         }
     }
 
+    // Pas de read all en non bloquant
     private void doRead(SelectionKey key) {
         SocketChannel clientSocketChannel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = ByteBuffer.allocate(BUFF_SIZE);
