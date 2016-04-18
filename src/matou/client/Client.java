@@ -140,10 +140,14 @@ public class Client {
                 while (bReceive.get() != R_PSEUDO && bReceive.hasRemaining()) ;
             } while (!bReceive.hasRemaining());
             int test = bReceive.getInt();
-            if (test == 0) {
+            if (test == 1) {
                 nickname = tmp;
                 return true;
+            } else if (test == 2) {
+                System.out.println("Vous avez déjà choisi votre pseudo");
+                return false;
             } else {
+
                 return false;
             }
         }

@@ -49,7 +49,7 @@ public class ServerNew {
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
     private final Set<SelectionKey> selectedKeys;
-    private final HashMap<SocketChannel, ClientInfo> clientInfoMap = new HashMap<>();
+    private final HashMap<SocketChannel, String> clientMap = new HashMap<>();
 
     public ServerNew(int port) throws IOException {
         serverSocketChannel = ServerSocketChannel.open();
@@ -158,8 +158,8 @@ public class ServerNew {
 
     // Reponse du serveur au client à propos de son pseudo
     private enum answerPseudo {
-        FREE,
         TAKEN,
+        FREE,
         ALREADY_CHOSEN
     }
 
@@ -280,12 +280,12 @@ public class ServerNew {
             String pseudo = UTF8_charset.decode(tempo).toString();
 
 
-            // Reponse
+            //// Ecriture de la reponse dans le buffer de sortie ////
             out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
 
             if (pseudoAlreadyExists(pseudo)) {
                 // ordinal -> valeur du TAKEN de answerPseudo
-                // = 1
+                // = 0
                 out.putInt(answerPseudo.TAKEN.ordinal());
             } else {
                 // Si le client a deja un nom , il ne peut pas en changer
@@ -297,26 +297,21 @@ public class ServerNew {
                     return;
                 }
 
-                // = 0
+                // Valeur de FREE = 1
                 out.putInt(answerPseudo.FREE.ordinal());
                 // On n'attribut le nom que s'il est libre
                 name = pseudo;
                 SocketChannel socket = (SocketChannel) key.channel();
-                // J'ai des doutes sur cette forme
-                clientInfoMap.put(socket, this);
+
+                // On ajoute le pseudo du client à la map des clients
+                clientMap.put(socket, name);
             }
             status = CurrentStatus.END;
         }
 
         // TODO
         private boolean pseudoAlreadyExists(String pseudo) {
-            final boolean[] exists = {false};
-            clientInfoMap.forEach((socketChannel, clientInfo) -> {
-                if (clientInfo.name.equals(pseudo)) {
-                    exists[0] = true;
-                }
-            });
-            return exists[0];
+            return clientMap.containsValue(pseudo);
         }
 
 
