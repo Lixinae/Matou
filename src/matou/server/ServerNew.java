@@ -124,6 +124,7 @@ public class ServerNew {
         if (-1 == client.read(clientInfo.in)) {
             clientInfo.isClosed = true;
             if (clientInfo.in.position() == 0) {
+                clientMap.remove(client);
                 client.close();
             }
         }
@@ -143,6 +144,7 @@ public class ServerNew {
             client.write(clientInfo.out);
             clientInfo.out.compact();
             if (clientInfo.isClosed) {
+                clientMap.remove(client);
                 client.close();
                 clientInfo.isClosed = true;
             }
@@ -153,7 +155,9 @@ public class ServerNew {
 
 
     private enum CurrentStatus {
-        BEGIN, MIDDLE, END
+        BEGIN,
+        MIDDLE,
+        END
     }
 
     // Reponse du serveur au client à propos de son pseudo
@@ -189,7 +193,7 @@ public class ServerNew {
 //    }
 
     private class ClientInfo {
-        boolean isClosed;
+        boolean isClosed = false;
         CurrentStatus status = CurrentStatus.BEGIN;
         private String name = null;
         private ByteBuffer in;
@@ -230,7 +234,7 @@ public class ServerNew {
                         break;
                     case DC_PSEUDO:
                         System.out.println("Entering disconnection");
-                        //dc = decodeDC_PSEUDO(key, socketChannel);
+                        decodeDC_PSEUDO();
                         System.out.println("Exiting disconnection");
                         break;
                     case D_LIST_CLIENT_CO:
@@ -257,8 +261,6 @@ public class ServerNew {
                         break;
                 }
             }
-
-
         }
 
         private void decodeE_PSEUDO() {
@@ -309,11 +311,16 @@ public class ServerNew {
             status = CurrentStatus.END;
         }
 
-        // TODO
         private boolean pseudoAlreadyExists(String pseudo) {
             return clientMap.containsValue(pseudo);
         }
 
+        private void decodeDC_PSEUDO() {
+            SocketChannel tmp = (SocketChannel) key.channel();
+            System.out.println("Disconnecting client : " + clientMap.get(tmp));
+            clientMap.remove(tmp);
+            key.cancel();
+        }
 
         public int getInterestKey() {
             int interestKey = 0;// initialize
