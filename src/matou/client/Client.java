@@ -614,7 +614,7 @@ public class Client {
             System.err.println("Erreur lors de la deconnection, serveur deconnecter");
         }
         end = true;
-        scan.close();
+//        scan.close();
         endAllThread();
     }
 
