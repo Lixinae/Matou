@@ -213,10 +213,6 @@ public class ServerNew {
     private enum PacketType {
         E_PSEUDO(1),
         CO_CLIENT_TO_CLIENT(2),
-        ACK_CO_CLIENT(3),
-        /* envoie d'un message ou d'un fichier a un client */
-        M_CLIENT_TO_CLIENT(4),
-        F_CLIENT_TO_CLIENT(5),
         /* deconnection du client */
         DC_PSEUDO(6),
         /* envoie et reception de la liste des clients */
@@ -336,26 +332,21 @@ public class ServerNew {
                         break;
                     case DC_PSEUDO:
                         System.out.println("Entering disconnection");
-                        // TODO verifer le fonctionnement
                         decodeDC_PSEUDO();
                         System.out.println("Exiting disconnection");
                         break;
                     case D_LIST_CLIENT_CO:
                         System.out.println("Entering demand list client");
-                        // TODO
                         decodeD_LIST_CLIENT_CO();
                         System.out.println("Exiting demand list client");
                         break;
                     case E_M_ALL:
                         System.out.println("Entering envoie message all");
-                        // TODO : a voir comment regler le soucis de l'envoie à tous
-                        //
                         decodeM_ALL();
                         System.out.println("Exiting envoie message all");
                         break;
                     case E_ADDR_SERV_CLIENT:
                         System.out.println("Entering envoie adresse serveur client");
-                        // TODO
                         decodeE_ADDR_SERV_CLIENT();
                         System.out.println("Exiting envoie adresse serveur client");
                         break;
@@ -437,7 +428,6 @@ public class ServerNew {
             return exists[0];
         }
 
-        // TODO A tester
         private void decodeDC_PSEUDO() {
             SocketChannel tmp = socketChannel;
             System.out.println("Disconnecting client : " + clientMap.get(tmp));
@@ -521,7 +511,7 @@ public class ServerNew {
             }
         }
 
-        // TODO
+        // Fonctionne
         private void decodeM_ALL() {
             int sizeName;
             if (in.remaining() < Integer.BYTES) {
@@ -659,18 +649,17 @@ public class ServerNew {
 
         @Override
         public String toString() {
-            return "ClientInfo{" +
-                    "   \nisClosed=" + isClosed +
-                    "   \nstatus=" + status +
-                    "   \nname='" + name + '\'' +
-                    "   \nin=" + in +
-                    "   \nout=" + out +
-                    "   \nsocketChannel=" + socketChannel +
-                    "   \ncurrentOp=" + currentOp +
-                    "   \nadressServer=" + adressServer +
+            return "ClientInfo{  " +
+                    "  \nisClosed=" + isClosed +
+                    "  \nstatus=" + status +
+                    "  \nname='" + name + '\'' +
+                    "  \nin=" + in +
+                    "  \nout=" + out +
+                    "  \nsocketChannel=" + socketChannel +
+                    "  \ncurrentOp=" + currentOp +
+                    "  \nadressServer=" + adressServer +
                     "\n}\n";
         }
-
     }
 }
 
