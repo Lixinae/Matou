@@ -50,6 +50,7 @@ public class ServerNew {
     private final Selector selector;
     private final Set<SelectionKey> selectedKeys;
     private final HashMap<SocketChannel, ClientInfo> clientMap = new HashMap<>();
+
     public ServerNew(int port) throws IOException {
         serverSocketChannel = ServerSocketChannel.open();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(port);
@@ -287,7 +288,7 @@ public class ServerNew {
         private SocketChannel socketChannel;
         private byte currentOp = -1;
         private InetSocketAddress adressServer;
-//        private SelectionKey key;
+        private SelectionKey key;
 
 
         public ClientInfo(SocketChannel socketChannel) {
@@ -296,11 +297,12 @@ public class ServerNew {
             this.socketChannel = socketChannel;
         }
 
-        public void buildOutBuffer() {
+        public void buildOutBuffer(SelectionKey key) {
+            this.key = key;
             cleanMapFromInvalidElements();
 
-            System.out.println("Status = " + status);
-//            System.out.println("in = " + in);
+            System.err.println("Status = " + status);
+            System.err.println("in = " + in);
             // Lis le 1er byte et le stocke
             if (in.position() > 0 && status == CurrentStatus.BEGIN) {
                 in.flip();
@@ -310,12 +312,13 @@ public class ServerNew {
                 in.compact();
                 //return;
             }
-//            System.out.println("status after begin = " + status);
-//            System.out.println("In = " + in);
+            System.err.println("status after begin = " + status);
+            System.err.println("In = " + in);
 
             // Une fois qu'on a lu le 1er byte on passe à la suite
             // Dès qu'une opération est effectué , le status passe à "END" , ce qui permettra d'écrire la réponse au client
             if (status == CurrentStatus.MIDDLE) {
+//                System.err.println("");
                 in.flip();
                 PacketType bb2 = PacketType.encode(currentOp);
                 switch (bb2) {
@@ -327,7 +330,7 @@ public class ServerNew {
                     case CO_CLIENT_TO_CLIENT:
                         System.out.println("Entering co client");
                         // TODO
-                        //decodeCO_CLIENT_TO_CLIENT(byteBuffer);
+                        decodeCO_CLIENT_TO_CLIENT();
                         System.out.println("Exiting co client");
                         break;
                     case DC_PSEUDO:
@@ -358,6 +361,7 @@ public class ServerNew {
             }
         }
 
+
         // Fonctionne
         private void decodeE_PSEUDO() {
             int size;
@@ -367,6 +371,7 @@ public class ServerNew {
             }
             size = in.getInt();
             if (in.remaining() < size) {
+                in.position(in.position() - Integer.BYTES);
                 in.compact();
                 return;
             }
@@ -426,6 +431,103 @@ public class ServerNew {
                 }
             });
             return exists[0];
+        }
+
+
+        // TODO Ne fonctionne pas encore
+        private void decodeCO_CLIENT_TO_CLIENT() {
+            System.err.println("In CO CLIENT DEBUT = " + in);
+            if (in.remaining() < Integer.BYTES) {
+                System.err.println(" CO_CLIENT_TO_CLIENT in < Int");
+                in.compact();
+                return;
+            }
+            int sizeDestinataire = in.getInt();
+            System.err.println("sizeDestinataire = " + sizeDestinataire);
+            if (in.remaining() < sizeDestinataire) {
+                System.err.println(" CO_CLIENT_TO_CLIENT in < Dest");
+                // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
+                in.position(in.position() - Integer.BYTES);
+                in.compact();
+                return;
+            }
+            ByteBuffer destBuff = ByteBuffer.allocate(sizeDestinataire);
+            for (int i = 0; i < sizeDestinataire; i++) {
+                destBuff.put(in.get());
+            }
+
+            if (in.remaining() < Integer.BYTES) {
+                System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < Int");
+                in.position(in.position() - Integer.BYTES - sizeDestinataire);
+                in.compact();
+                return;
+            }
+
+
+            int sizeSrc = in.getInt();
+            if (in.remaining() < sizeSrc) {
+                System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < SRC");
+                // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
+                in.position(in.position() - Integer.BYTES - sizeDestinataire - Integer.BYTES);
+                in.compact();
+                return;
+            }
+            ByteBuffer srcBuff = ByteBuffer.allocate(sizeSrc);
+            for (int i = 0; i < sizeSrc; i++) {
+                srcBuff.put(in.get());
+            }
+
+            destBuff.flip();
+            String dest = UTF8_charset.decode(destBuff).toString();
+
+
+            System.out.println(clientMap.values());
+            // TODO Peut etre des changement à faire ici
+            if (!findClientInMap(dest)) {
+                in.compact();
+//Si reponse a ecrire au client demandant le connection
+//                 Faire buffer "out" avec la reponse
+
+//                status = CurrentStatus.END;
+
+                return;
+            }
+
+            // Ne touche que au buffer Out du destinataire
+            clientMap.values().forEach((clientInfo) -> {
+                if (dest.equals(clientInfo.getName())) {
+                    System.err.println("/////////////// TESTTTTTTTTTTT ///////////////////////////////");
+                    clientInfo.out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
+                    clientInfo.out.put(PacketType.CO_CLIENT_TO_CLIENT.getValue())
+                            .putInt(sizeSrc)
+                            .put(srcBuff);
+                    clientInfo.key.interestOps(SelectionKey.OP_WRITE);
+                    // Changer la clé du client Info
+                }
+            });
+
+//            selector.keys().forEach(selectionKey -> {
+//
+//                SelectableChannel channel = selectionKey.channel();
+//                if (channel instanceof SocketChannel) {
+//                    if(channel.equals())
+//                    selectionKey.interestOps(SelectionKey.OP_WRITE);
+//                }
+//            });
+            status = CurrentStatus.END;
+            in.compact();
+
+
+        }
+
+        private boolean findClientInMap(String dest) {
+            final boolean[] toReturn = {false};
+            clientMap.values().forEach((clientInfo) -> {
+                if (dest.equals(clientInfo.getName())) {
+                    toReturn[0] = true;
+                }
+            });
+            return toReturn[0];
         }
 
         private void decodeDC_PSEUDO() {
@@ -489,6 +591,7 @@ public class ServerNew {
             }
             int size = in.getInt();
             if (in.remaining() < size) {
+                in.position(in.position() - Integer.BYTES);
                 in.compact();
                 return;
             }
@@ -507,19 +610,20 @@ public class ServerNew {
                 int port = Integer.parseInt(fullChain.substring(splitIndex + 1));
                 adressServer = new InetSocketAddress(host, port);
 
-                clientMap.values().forEach(System.out::println);
+//                clientMap.values().forEach(System.out::println);
             }
         }
 
         // Fonctionne
         private void decodeM_ALL() {
-            int sizeName;
+
             if (in.remaining() < Integer.BYTES) {
                 in.compact();
                 return;
             }
-            sizeName = in.getInt();
+            int sizeName = in.getInt();
             if (in.remaining() < sizeName) {
+                in.position(in.position() - Integer.BYTES);
                 in.compact();
                 return;
             }
@@ -533,11 +637,13 @@ public class ServerNew {
             ///// Decode message //////
             int sizeMessage;
             if (in.remaining() < Integer.BYTES) {
+                in.position(in.position() - Integer.BYTES - sizeName);
                 in.compact();
                 return;
             }
             sizeMessage = in.getInt();
             if (in.remaining() < sizeMessage) {
+                in.position(in.position() - Integer.BYTES - sizeName - Integer.BYTES);
                 in.compact();
                 return;
             }
@@ -548,9 +654,10 @@ public class ServerNew {
             buffMessage.flip();
 
 
+            /////// Ecriture dans le buffer out de chacune des personnes connecté et passage en mode WRITE pour ces clefs //////
             ByteBuffer toSend = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeName + Integer.BYTES + sizeMessage);
             toSend.put(PacketType.E_M_ALL.getValue())
-                    .putInt(sizeMessage)
+                    .putInt(sizeName)
                     .put(buffName)
                     .putInt(sizeMessage)
                     .put(buffMessage);
@@ -564,14 +671,15 @@ public class ServerNew {
                     out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + finalSizeMessage + Integer.BYTES + finalSizeMessage1);
                     clientInfo.out.put(toSend);
                     clientInfo.status = CurrentStatus.END;
+                    clientInfo.key.interestOps(SelectionKey.OP_WRITE);
                 }
             });
-            selector.keys().forEach(selectionKey -> {
-                SelectableChannel channel = selectionKey.channel();
-                if (channel instanceof SocketChannel) {
-                    selectionKey.interestOps(SelectionKey.OP_WRITE);
-                }
-            });
+//            selector.keys().forEach(selectionKey -> {
+//                SelectableChannel channel = selectionKey.channel();
+//                if (channel instanceof SocketChannel) {
+//                    selectionKey.interestOps(SelectionKey.OP_WRITE);
+//                }
+//            });
 //            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
 //            printKeys();
 //            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
@@ -582,8 +690,6 @@ public class ServerNew {
         // Pas de readAll en non bloquant
         private void doRead(SelectionKey key) throws IOException {
             System.out.println("In READ");
-//            ClientInfo clientInfo = (ClientInfo) key.attachment();
-//            SocketChannel client = (SocketChannel) key.channel();
             if (-1 == socketChannel.read(in)) {
                 System.out.println("///////////////////////Closed///////////////////////");
                 isClosed = true;
@@ -593,15 +699,12 @@ public class ServerNew {
                     return;
                 }
             }
-            buildOutBuffer();
+            buildOutBuffer(key);
             key.interestOps(getInterestKey());
         }
 
         private void doWrite(SelectionKey key) throws IOException {
             System.out.println("In WRITE");
-//            ClientInfo clientInfo = (ClientInfo) key.attachment();
-//            SocketChannel client = (SocketChannel) key.channel();
-            //requestProcessor.processRequest(key);
 
 //        System.err.println("//////////// Client INFO ///////////");
 //        System.err.println(clientInfo);
@@ -612,14 +715,13 @@ public class ServerNew {
 
             if (status == CurrentStatus.END) {
                 System.out.println("Before send");
-                System.out.println(out);
+                System.out.println("out = " + out);
                 out.flip();
                 socketChannel.write(out);
                 out.compact();
                 if (isClosed) {
                     clientMap.remove(socketChannel);
                     socketChannel.close();
-//                clientInfo.isClosed = true;
                     return;
                 }
                 status = CurrentStatus.BEGIN;

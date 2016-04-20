@@ -18,7 +18,7 @@ public class Client {
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
 
-//    /* byte pour que le serveur sache qu'on envoie son pseudo */
+    //    /* byte pour que le serveur sache qu'on envoie son pseudo */
 //    private final static byte E_PSEUDO = 1;
 //    /* connection et accuse de reception de la connection au client */
 //    private final static byte CO_CLIENT_TO_CLIENT = 2;
@@ -41,7 +41,7 @@ public class Client {
      * Le temps que doit attendre le programme entre deux actualisation de la
      * liste
      */
-    private final static long ACTU_LIST_TIME_MILLIS = 1000 * 5;
+    private final static long ACTU_LIST_TIME_MILLIS = 1000 * 10;
     private final static int BUFFER_SIZE = 1024;
     private final Scanner scan;
     private final List<Thread> tabThreadClient;
@@ -54,16 +54,17 @@ public class Client {
      * recrer a chaque fois que l'on actualise la liste
      */
     private HashMap<String, InetSocketAddress> mapClient;
-    private BlockingQueue<String> queueAll = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueACK = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueConnect = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueFile = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueUser = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueDest = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<String> queueClient = new ArrayBlockingQueue<String>(1);
-    private BlockingQueue<ByteBuffer> queueServer = new ArrayBlockingQueue<ByteBuffer>(1);
+    private BlockingQueue<String> queueAll = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueACK = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueConnect = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueFile = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueUser = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueDest = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<String> queueClient = new ArrayBlockingQueue<>(1);
+    private BlockingQueue<ByteBuffer> queueServer = new ArrayBlockingQueue<>(1);
     private boolean canAccept = false;
     private boolean end = false;
+
     public Client(String host, int port) throws IOException {
 
         mapClient = new HashMap<>();
@@ -116,19 +117,15 @@ public class Client {
 
         String serverBeforeStrip;
         try {
-            serverBeforeStrip = serverSocketChannel.getLocalAddress()
-                    .toString();
+            serverBeforeStrip = serverSocketChannel.getLocalAddress().toString();
         } catch (IOException e) {
-            System.err
-                    .println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
+            System.err.println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
             return;
         }
-        ByteBuffer bInfoServer = UTF8_charset.encode(serverBeforeStrip.replace(
-                "/", ""));
-        ByteBuffer bInfoServerToServer = ByteBuffer.allocate(Byte.BYTES
-                + Integer.BYTES + serverBeforeStrip.length() - 1);
+        ByteBuffer bInfoServer = UTF8_charset.encode(serverBeforeStrip.replace("/", ""));
+        ByteBuffer bInfoServerToServer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + serverBeforeStrip.length() - 1);
 
         bInfoServerToServer.put(PacketType.E_ADDR_SERV_CLIENT.getValue())
                 .putInt(serverBeforeStrip.length() - 1).put(bInfoServer);
@@ -137,8 +134,7 @@ public class Client {
         try {
             socket.write(bInfoServerToServer);
         } catch (IOException e) {
-            System.err
-                    .println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
+            System.err.println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
             return;
@@ -385,12 +381,10 @@ public class Client {
         if ((arg0 = queueConnect.poll()) != null) {
             sendPseudoConnect(arg0);
         }
-        if ((arg0 = queueFile.poll()) != null
-                && (arg1 = queueUser.poll()) != null) {
+        if ((arg0 = queueFile.poll()) != null && (arg1 = queueUser.poll()) != null) {
             sendFile(arg0, arg1);
         }
-        if ((arg0 = queueClient.poll()) != null
-                && (arg1 = queueDest.poll()) != null) {
+        if ((arg0 = queueClient.poll()) != null && (arg1 = queueDest.poll()) != null) {
             sendMessageToClient(arg0, arg1);
         }
     }
