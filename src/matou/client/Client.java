@@ -150,7 +150,13 @@ public class Client {
     private boolean sendPseudo() {
         System.out.println("Quel pseudo souhaitez vous avoir ?");
         if (scan.hasNextLine()) {
-            String tmp = scan.nextLine();
+            String tmp;
+            do {
+                tmp = scan.nextLine();
+                if (tmp.length() > BUFFER_SIZE) {
+                    System.out.println("Pseudo trop long , veuillez choisir un pseudo plus court");
+                }
+            } while (tmp.length() > BUFFER_SIZE);
             ByteBuffer bNickName = UTF8_charset.encode(tmp);
             ByteBuffer bNickNameToServer = ByteBuffer.allocate(Byte.BYTES
                     + Integer.BYTES + tmp.length());
@@ -444,6 +450,8 @@ public class Client {
                 .putInt(nickname.length()).put(UTF8_charset.encode(nickname));
         buffConnect.flip();
 
+        System.out.println(buffConnect);
+
         Thread tmp = serverClient();
         // tabThreadClient.add(tmp);
         tmp.start();
@@ -607,16 +615,20 @@ public class Client {
                         }
                         String line = scan.nextLine();
                         String[] words = line.split(" ");
+
                         // /////////////////////////////////////////////////////////
                         if (words[0].equals("/all")) {
                             if (words.length < 2) {
-                                System.err
-                                        .println("Vous n'avez pas mis de message");
+                                System.err.println("Vous n'avez pas mis de message");
                             }
-                            try {
-                                queueAll.put(constructMessage(1, words));
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                            if (words[1].length() < BUFFER_SIZE) {
+                                try {
+                                    queueAll.put(constructMessage(1, words));
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            } else {
+                                System.out.println("Message trop long, veuillez ecrire un message plus court");
                             }
                         }
                         // /////////////////////////////////////////////////////////
@@ -626,8 +638,7 @@ public class Client {
                         // /////////////////////////////////////////////////////////
                         else if (words[0].equals("/w")) {
                             if (words.length < 3) {
-                                System.err
-                                        .println("Vous n'avez pas mis de message");
+                                System.err.println("Vous n'avez pas mis de message");
                             }
                             try {
                                 queueDest.put(words[1]);
@@ -635,17 +646,20 @@ public class Client {
                                 e.printStackTrace();
                             }
                             if (friends.containsKey(words[1])) {
-                                try {
-                                    queueClient.put(constructMessage(2, words));
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+                                if (words[2].length() < BUFFER_SIZE) {
+                                    try {
+                                        queueClient.put(constructMessage(2, words));
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    System.out.println("Message trop long, veuillez ecrire un message plus court");
                                 }
                             } else {
                                 if (mapClient.containsKey(words[1])) {
-                                    System.out
-                                            .println("Il faut vous connecter au client "
-                                                    + words[1]
-                                                    + " avant de lui envoyer des messages privee");
+                                    System.out.println("Il faut vous connecter au client "
+                                            + words[1]
+                                            + " avant de lui envoyer des messages privee");
                                 } else {
                                     System.out.println("Le client " + words[1]
                                             + " n'existe pas");
@@ -656,8 +670,7 @@ public class Client {
                         else if (words[0].equals("/accept")) {
                             if (canAccept) {
                                 if (words.length < 2) {
-                                    System.err
-                                            .println("Il faut donner un nom d'utilisateur sur lequel accepter");
+                                    System.err.println("Il faut donner un nom d'utilisateur sur lequel accepter");
                                 } else if (words.length > 2) {
                                     System.err
                                             .println("Trop d'argument , format /accept user");
@@ -678,11 +691,9 @@ public class Client {
                         else if (words[0].equals("/connect")) {
                             if (!mapClient.isEmpty()) {
                                 if (words.length < 2) {
-                                    System.err
-                                            .println("Il faut donner un nom d'utilisateur sur lequel se connecter");
+                                    System.err.println("Il faut donner un nom d'utilisateur sur lequel se connecter");
                                 } else if (words.length > 2) {
-                                    System.err
-                                            .println("Trop d'argument , format /connect user");
+                                    System.err.println("Trop d'argument , format /connect user");
                                 } else {
                                     if (!friends.containsKey(words[1])) {
                                         if (mapClient.containsKey(words[1])) {
@@ -692,19 +703,15 @@ public class Client {
                                                 e.printStackTrace();
                                             }
                                         } else {
-                                            System.out.println("Le client "
-                                                    + words[1]
-                                                    + " n'existe pas");
+                                            System.out.println("Le client " + words[1] + " n'existe pas");
                                         }
                                     } else {
-                                        System.out
-                                                .println("Vous etes deja connecte au client "
-                                                        + words[1]);
+                                        System.out.println("Vous etes deja connecte au client "
+                                                + words[1]);
                                     }
                                 }
                             } else {
-                                System.out
-                                        .println("Il n'y a personne de connecter sur le serveur autre que vous");
+                                System.out.println("Il n'y a personne de connecter sur le serveur autre que vous");
                             }
                         }
                         // /////////////////////////////////////////////////////////

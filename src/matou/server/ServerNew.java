@@ -78,11 +78,11 @@ public class ServerNew {
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
         System.out.println("Server started on " + serverSocketChannel.getLocalAddress());
         while (!Thread.interrupted()) {
-            printKeys();
+//            printKeys();
             System.out.println("Starting select");
             selector.select();
             System.out.println("Select finished");
-            printSelectedKey();
+//            printSelectedKey();
             processSelectedKeys();
             selectedKeys.clear();
         }
@@ -303,8 +303,12 @@ public class ServerNew {
 
             System.err.println("Status = " + status);
             System.err.println("in = " + in);
+            System.err.println("pseudo = " + name);
+            System.err.println("CurrentOp = " + currentOp);
             // Lis le 1er byte et le stocke
             if (in.position() > 0 && status == CurrentStatus.BEGIN) {
+                out.clear();
+
                 in.flip();
                 currentOp = in.get();
                 System.out.println("CurrentOp = " + currentOp);
@@ -312,8 +316,12 @@ public class ServerNew {
                 in.compact();
                 //return;
             }
+            System.err.println("////////////////////////////////////////////////////////////////");
             System.err.println("status after begin = " + status);
             System.err.println("In = " + in);
+            System.err.println("pseudo = " + name);
+            System.err.println("CurrentOp = " + currentOp);
+            System.err.println("Out = " + out);
 
             // Une fois qu'on a lu le 1er byte on passe à la suite
             // Dès qu'une opération est effectué , le status passe à "END" , ce qui permettra d'écrire la réponse au client
@@ -366,13 +374,13 @@ public class ServerNew {
         private void decodeE_PSEUDO() {
             int size;
             if (in.remaining() < Integer.BYTES) {
-                in.compact();
+//                in.compact();
                 return;
             }
             size = in.getInt();
             if (in.remaining() < size) {
-                in.position(in.position() - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer tempo = ByteBuffer.allocate(size);
@@ -386,7 +394,9 @@ public class ServerNew {
 
             in.compact();
             //// Ecriture de la reponse dans le buffer de sortie ////
-            if (writeOutAnswerPseudo(pseudo)) return;
+            if (writeOutAnswerPseudo(pseudo)) {
+                return;
+            }
             status = CurrentStatus.END;
             System.out.println("status end = " + status);
         }
@@ -439,7 +449,7 @@ public class ServerNew {
             System.err.println("In CO CLIENT DEBUT = " + in);
             if (in.remaining() < Integer.BYTES) {
                 System.err.println(" CO_CLIENT_TO_CLIENT in < Int");
-                in.compact();
+//                in.compact();
                 return;
             }
             int sizeDestinataire = in.getInt();
@@ -447,8 +457,8 @@ public class ServerNew {
             if (in.remaining() < sizeDestinataire) {
                 System.err.println(" CO_CLIENT_TO_CLIENT in < Dest");
                 // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
-                in.position(in.position() - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer destBuff = ByteBuffer.allocate(sizeDestinataire);
@@ -458,8 +468,8 @@ public class ServerNew {
 
             if (in.remaining() < Integer.BYTES) {
                 System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < Int");
-                in.position(in.position() - Integer.BYTES - sizeDestinataire);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES - sizeDestinataire);
+//                in.compact();
                 return;
             }
 
@@ -468,8 +478,8 @@ public class ServerNew {
             if (in.remaining() < sizeSrc) {
                 System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < SRC");
                 // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
-                in.position(in.position() - Integer.BYTES - sizeDestinataire - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES - sizeDestinataire - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer srcBuff = ByteBuffer.allocate(sizeSrc);
@@ -481,10 +491,12 @@ public class ServerNew {
             String dest = UTF8_charset.decode(destBuff).toString();
 
 
+            System.out.println("Out = " + out);
             System.out.println(clientMap.values());
             // TODO Peut etre des changement à faire ici
             if (!findClientInMap(dest)) {
                 in.compact();
+                status = CurrentStatus.END;
 //Si reponse a ecrire au client demandant le connection
 //                 Faire buffer "out" avec la reponse
 
@@ -514,6 +526,9 @@ public class ServerNew {
 //                    selectionKey.interestOps(SelectionKey.OP_WRITE);
 //                }
 //            });
+            /// Bidouille ///
+//            out = ByteBuffer.allocate()
+
             status = CurrentStatus.END;
             in.compact();
 
@@ -586,13 +601,13 @@ public class ServerNew {
         // Fonctionne
         private void decodeE_ADDR_SERV_CLIENT() {
             if (in.remaining() < Integer.BYTES) {
-                in.compact();
+//                in.compact();
                 return;
             }
             int size = in.getInt();
             if (in.remaining() < size) {
-                in.position(in.position() - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer tempo = ByteBuffer.allocate(size);
@@ -618,13 +633,13 @@ public class ServerNew {
         private void decodeM_ALL() {
 
             if (in.remaining() < Integer.BYTES) {
-                in.compact();
+//                in.compact();
                 return;
             }
             int sizeName = in.getInt();
             if (in.remaining() < sizeName) {
-                in.position(in.position() - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer buffName = ByteBuffer.allocate(sizeName);
@@ -637,14 +652,14 @@ public class ServerNew {
             ///// Decode message //////
             int sizeMessage;
             if (in.remaining() < Integer.BYTES) {
-                in.position(in.position() - Integer.BYTES - sizeName);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES - sizeName);
+//                in.compact();
                 return;
             }
             sizeMessage = in.getInt();
             if (in.remaining() < sizeMessage) {
-                in.position(in.position() - Integer.BYTES - sizeName - Integer.BYTES);
-                in.compact();
+//                in.position(in.position() - Integer.BYTES - sizeName - Integer.BYTES);
+//                in.compact();
                 return;
             }
             ByteBuffer buffMessage = ByteBuffer.allocate(sizeMessage);
@@ -661,25 +676,18 @@ public class ServerNew {
                     .put(buffName)
                     .putInt(sizeMessage)
                     .put(buffMessage);
-            toSend.flip();
+//            toSend.flip();
 
-
-            final int finalSizeMessage = sizeMessage;
-            final int finalSizeMessage1 = sizeMessage;
+            System.out.println("ToSend = " + toSend);
             clientMap.forEach((sc, clientInfo) -> {
                 if (!sc.equals(socketChannel)) {
-                    out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + finalSizeMessage + Integer.BYTES + finalSizeMessage1);
-                    clientInfo.out.put(toSend);
+                    clientInfo.out = toSend.duplicate();
+//                    out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + finalSizeName + Integer.BYTES + finalSizeMessage);
+//                    clientInfo.out.put(toSend);
                     clientInfo.status = CurrentStatus.END;
                     clientInfo.key.interestOps(SelectionKey.OP_WRITE);
                 }
             });
-//            selector.keys().forEach(selectionKey -> {
-//                SelectableChannel channel = selectionKey.channel();
-//                if (channel instanceof SocketChannel) {
-//                    selectionKey.interestOps(SelectionKey.OP_WRITE);
-//                }
-//            });
 //            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
 //            printKeys();
 //            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
