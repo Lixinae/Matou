@@ -18,30 +18,6 @@ public class ServerNew {
 
     private final static int BUFF_SIZE = 1024;
 
-    private final static int MAX_SIZE = 1073741824; // Taille maximal d'un buffer (donc MAX_SIZE octet entrant au maximum)
-
-//    /* Recuperation du pseudo que le client envoie */
-//    private final static byte E_PSEUDO = 1;
-//    /* Demande d'une connection d'un client à un autre */
-//    private final static byte CO_CLIENT_TO_CLIENT = 2;
-//    /* Demande de deconnection d'un client */
-//    private final static byte DC_PSEUDO = 6;
-//
-//    /*                                    */
-//    /* Codes pour la reception de paquets */
-//    /*                                    */
-//    /* Demande la liste des clients */
-//    private final static byte D_LIST_CLIENT_CO = 7;
-//    /* Demande d'envoie à tous */
-//    private final static byte E_M_ALL = 9;
-//    /* Reception de l'adresse server du client */
-//    private static final byte E_ADDR_SERV_CLIENT = 11;
-//    /* Reponse a la demande de la liste des clients*/
-//    private final static byte R_LIST_CLIENT_CO = 8;
-//    /* Reponse du serveur au client sur la disponibilite de son pseudo*/
-//    private final static byte R_PSEUDO = 10;
-
-
     private final Charset UTF8_charset = Charset.forName("UTF8");
     /*                               */
     /* Code pour l'envoie de paquets */
@@ -79,9 +55,9 @@ public class ServerNew {
         System.out.println("Server started on " + serverSocketChannel.getLocalAddress());
         while (!Thread.interrupted()) {
 //            printKeys();
-            System.out.println("Starting select");
+//            System.out.println("Starting select");
             selector.select();
-            System.out.println("Select finished");
+//            System.out.println("Select finished");
 //            printSelectedKey();
             processSelectedKeys();
             selectedKeys.clear();
@@ -213,7 +189,7 @@ public class ServerNew {
 
     private enum PacketType {
         E_PSEUDO(1),
-        CO_CLIENT_TO_CLIENT(2),
+        E_CO_CLIENT_TO_CLIENT(2),
         /* deconnection du client */
         DC_PSEUDO(6),
         /* envoie et reception de la liste des clients */
@@ -224,8 +200,8 @@ public class ServerNew {
         /* reception pseudo */
         R_PSEUDO(10),
         /* envoie adresse du serveur du client au serveur principal */
-        E_ADDR_SERV_CLIENT(11);
-
+        E_ADDR_SERV_CLIENT(11),
+        R_CO_CLIENT_TO_CLIENT(12);
         private final byte value;
 
         PacketType(int value) {
@@ -288,7 +264,7 @@ public class ServerNew {
         private SocketChannel socketChannel;
         private byte currentOp = -1;
         private InetSocketAddress adressServer;
-        private SelectionKey key;
+        private SelectionKey selectionKey;
 
 
         public ClientInfo(SocketChannel socketChannel) {
@@ -298,17 +274,17 @@ public class ServerNew {
         }
 
         public void buildOutBuffer(SelectionKey key) {
-            this.key = key;
+            this.selectionKey = key;
+
             cleanMapFromInvalidElements();
 
-            System.err.println("Status = " + status);
-            System.err.println("in = " + in);
-            System.err.println("pseudo = " + name);
-            System.err.println("CurrentOp = " + currentOp);
+//            System.err.println("Status = " + status);
+//            System.err.println("in = " + in);
+//            System.err.println("pseudo = " + name);
+//            System.err.println("CurrentOp = " + currentOp);
+//            System.err.println("Selection Key = " +selectionKey.interestOps());
             // Lis le 1er byte et le stocke
             if (in.position() > 0 && status == CurrentStatus.BEGIN) {
-                out.clear();
-
                 in.flip();
                 currentOp = in.get();
                 System.out.println("CurrentOp = " + currentOp);
@@ -316,12 +292,12 @@ public class ServerNew {
                 in.compact();
                 //return;
             }
-            System.err.println("////////////////////////////////////////////////////////////////");
-            System.err.println("status after begin = " + status);
-            System.err.println("In = " + in);
-            System.err.println("pseudo = " + name);
-            System.err.println("CurrentOp = " + currentOp);
-            System.err.println("Out = " + out);
+//            System.err.println("////////////////////////////////////////////////////////////////");
+//            System.err.println("status after begin = " + status);
+//            System.err.println("In = " + in);
+//            System.err.println("pseudo = " + name);
+//            System.err.println("CurrentOp = " + currentOp);
+//            System.err.println("Out = " + out);
 
             // Une fois qu'on a lu le 1er byte on passe à la suite
             // Dès qu'une opération est effectué , le status passe à "END" , ce qui permettra d'écrire la réponse au client
@@ -335,7 +311,7 @@ public class ServerNew {
                         decodeE_PSEUDO();
                         System.out.println("Exiting decode pseudo");
                         break;
-                    case CO_CLIENT_TO_CLIENT:
+                    case E_CO_CLIENT_TO_CLIENT:
                         System.out.println("Entering co client");
                         // TODO
                         decodeCO_CLIENT_TO_CLIENT();
@@ -389,7 +365,7 @@ public class ServerNew {
             }
             tempo.flip();
             String pseudo = UTF8_charset.decode(tempo).toString();
-            System.out.println("Pseudo = " + pseudo);
+//            System.out.println("Pseudo = " + pseudo);
 
 
             in.compact();
@@ -398,28 +374,21 @@ public class ServerNew {
                 return;
             }
             status = CurrentStatus.END;
-            System.out.println("status end = " + status);
+//            System.out.println("status end = " + status);
         }
 
         private boolean writeOutAnswerPseudo(String pseudo) {
             out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
             out.put(PacketType.R_PSEUDO.getValue());
             if (pseudoAlreadyExists(pseudo)) {
-                // ordinal -> valeur du TAKEN de answerPseudo
-                // = 0
-                System.out.println("Pseudo exists");
                 out.putInt(answerPseudo.TAKEN.getValue());
             } else {
                 // Si le client a deja un nom , il ne peut pas en changer
                 if (name != null) {
-                    // Indique au client qu'il a déjà choisi son pseudo
-                    // = 2
-                    System.out.println("Pseudo already chosen");
                     out.putInt(answerPseudo.ALREADY_CHOSEN.getValue());
                     status = CurrentStatus.END;
                     return true;
                 }
-                System.out.println("Pseudo free");
                 // Valeur de FREE = 1
                 out.putInt(answerPseudo.FREE.getValue());
                 // On n'attribut le nom que s'il est libre
@@ -436,7 +405,7 @@ public class ServerNew {
         private boolean pseudoAlreadyExists(String pseudo) {
             final boolean[] exists = {false};
             clientMap.forEach((sc, clientInfo) -> {
-                if (clientInfo.getName().equals(pseudo)) {
+                if (clientInfo.getName().compareToIgnoreCase(pseudo) == 0) {
                     exists[0] = true;
                 }
             });
@@ -446,19 +415,13 @@ public class ServerNew {
 
         // TODO Ne fonctionne pas encore
         private void decodeCO_CLIENT_TO_CLIENT() {
-            System.err.println("In CO CLIENT DEBUT = " + in);
             if (in.remaining() < Integer.BYTES) {
-                System.err.println(" CO_CLIENT_TO_CLIENT in < Int");
-//                in.compact();
+                System.err.println(" E_CO_CLIENT_TO_CLIENT in < Int");
                 return;
             }
             int sizeDestinataire = in.getInt();
-            System.err.println("sizeDestinataire = " + sizeDestinataire);
             if (in.remaining() < sizeDestinataire) {
-                System.err.println(" CO_CLIENT_TO_CLIENT in < Dest");
-                // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
-//                in.position(in.position() - Integer.BYTES);
-//                in.compact();
+                System.err.println(" E_CO_CLIENT_TO_CLIENT in < Dest");
                 return;
             }
             ByteBuffer destBuff = ByteBuffer.allocate(sizeDestinataire);
@@ -467,80 +430,57 @@ public class ServerNew {
             }
 
             if (in.remaining() < Integer.BYTES) {
-                System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < Int");
-//                in.position(in.position() - Integer.BYTES - sizeDestinataire);
-//                in.compact();
+                System.err.println(" E_CO_CLIENT_TO_CLIENT dest lu mais -> in < Int");
                 return;
             }
 
 
             int sizeSrc = in.getInt();
             if (in.remaining() < sizeSrc) {
-                System.err.println(" CO_CLIENT_TO_CLIENT dest lu mais -> in < SRC");
-                // Reset la position du buffer au cas ou on a lu un INT mais qu'il n'y avait pas assez ensuite pour pouvoir tout relire correctement
-//                in.position(in.position() - Integer.BYTES - sizeDestinataire - Integer.BYTES);
-//                in.compact();
+                System.err.println(" E_CO_CLIENT_TO_CLIENT dest lu mais -> in < SRC");
                 return;
             }
             ByteBuffer srcBuff = ByteBuffer.allocate(sizeSrc);
             for (int i = 0; i < sizeSrc; i++) {
                 srcBuff.put(in.get());
             }
-
+            srcBuff.flip();
             destBuff.flip();
             String dest = UTF8_charset.decode(destBuff).toString();
 
 
-            System.out.println("CO CLIENT Out = " + out);
-            System.out.println(clientMap.values());
             // TODO Peut etre des changement à faire ici
             if (!findClientInMap(dest)) {
                 in.compact();
                 out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-                out.put((byte) -1)// -1 -> placeholder
+                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())// -1 -> placeholder
                         .putInt(0);
 
                 status = CurrentStatus.END;
-//Si reponse a ecrire au client demandant le connection
-//                 Faire buffer "out" avec la reponse
 
-//                status = CurrentStatus.END;
-
-                return;
-            }
-
-            // Ne touche que au buffer Out du destinataire
-            clientMap.forEach((sc, clientInfo) -> {
-                if (!sc.equals(socketChannel)) {
-                    if (dest.equals(clientInfo.getName())) {
-                        System.err.println("/////////////// TESTTTTTTTTTTT ///////////////////////////////");
-                        clientInfo.out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
-                        clientInfo.out.put(PacketType.CO_CLIENT_TO_CLIENT.getValue())
-                                .putInt(sizeSrc)
-                                .put(srcBuff);
-                        clientInfo.key.interestOps(SelectionKey.OP_WRITE);
-                        // Changer la clé du client Info
+            } else {
+                // Ne touche que au buffer Out du destinataire
+                clientMap.forEach((sc, clientInfo) -> {
+                    if (!sc.equals(socketChannel)) {
+                        if (dest.equals(clientInfo.getName())) {
+                            clientInfo.out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
+                            clientInfo.out.put(PacketType.E_CO_CLIENT_TO_CLIENT.getValue())
+                                    .putInt(sizeSrc)
+                                    .put(srcBuff);
+                            clientInfo.status = CurrentStatus.END;
+                            clientInfo.selectionKey.interestOps(SelectionKey.OP_WRITE);
+                        }
                     }
-                }
-
-            });
-
-//            selector.keys().forEach(selectionKey -> {
-//
-//                SelectableChannel channel = selectionKey.channel();
-//                if (channel instanceof SocketChannel) {
-//                    if(channel.equals())
-//                    selectionKey.interestOps(SelectionKey.OP_WRITE);
-//                }
-//            });
-            /// Bidouille ///
-            out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-            out.put((byte) -1)// -1 -> placeholder
-                    .putInt(1);
-            status = CurrentStatus.END;
-            in.compact();
+                });
 
 
+                out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())// -1 -> placeholder
+                        .putInt(1);
+
+                status = CurrentStatus.END;
+                in.compact();
+            }
         }
 
         private boolean findClientInMap(String dest) {
@@ -598,7 +538,7 @@ public class ServerNew {
             final Long[] total = {0L};
             total[0] += Byte.BYTES;
             total[0] += Integer.BYTES;
-            clientMap.forEach((key, clientInfo) -> {
+            clientMap.values().forEach((clientInfo) -> {
                 // Peut se simplifier mais cette forme est plus clair
                 long clientSize = Integer.BYTES + clientInfo.getName().length() + Integer.BYTES + clientInfo.getAdressServer().toString().replace("/", "").length();
                 total[0] += clientSize;
@@ -641,13 +581,10 @@ public class ServerNew {
         private void decodeM_ALL() {
 
             if (in.remaining() < Integer.BYTES) {
-//                in.compact();
                 return;
             }
             int sizeName = in.getInt();
             if (in.remaining() < sizeName) {
-//                in.position(in.position() - Integer.BYTES);
-//                in.compact();
                 return;
             }
             ByteBuffer buffName = ByteBuffer.allocate(sizeName);
@@ -660,14 +597,10 @@ public class ServerNew {
             ///// Decode message //////
             int sizeMessage;
             if (in.remaining() < Integer.BYTES) {
-//                in.position(in.position() - Integer.BYTES - sizeName);
-//                in.compact();
                 return;
             }
             sizeMessage = in.getInt();
             if (in.remaining() < sizeMessage) {
-//                in.position(in.position() - Integer.BYTES - sizeName - Integer.BYTES);
-//                in.compact();
                 return;
             }
             ByteBuffer buffMessage = ByteBuffer.allocate(sizeMessage);
@@ -684,21 +617,14 @@ public class ServerNew {
                     .put(buffName)
                     .putInt(sizeMessage)
                     .put(buffMessage);
-//            toSend.flip();
 
-            System.out.println("ToSend = " + toSend);
             clientMap.forEach((sc, clientInfo) -> {
                 if (!sc.equals(socketChannel)) {
                     clientInfo.out = toSend.duplicate();
-//                    out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + finalSizeName + Integer.BYTES + finalSizeMessage);
-//                    clientInfo.out.put(toSend);
                     clientInfo.status = CurrentStatus.END;
-                    clientInfo.key.interestOps(SelectionKey.OP_WRITE);
+                    clientInfo.selectionKey.interestOps(SelectionKey.OP_WRITE);
                 }
             });
-//            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
-//            printKeys();
-//            System.out.println("/////////////////////// MESSAGE ALL //////////////////////////// ");
             in.compact();
             status = CurrentStatus.END;
         }
@@ -708,6 +634,7 @@ public class ServerNew {
             System.out.println("In READ");
             if (-1 == socketChannel.read(in)) {
                 System.out.println("///////////////////////Closed///////////////////////");
+                System.out.println("Client : " + name + " disconnected");
                 isClosed = true;
                 if (in.position() == 0) {
                     clientMap.remove(socketChannel);
@@ -724,19 +651,10 @@ public class ServerNew {
 
         private void doWrite(SelectionKey key) throws IOException {
             System.out.println("In WRITE");
-
-//        System.err.println("//////////// Client INFO ///////////");
-//        System.err.println(clientInfo);
-//
-//        System.err.println("//////////// Client Map ////////////");
-//        System.err.println(clientMap.get(client));
-
-
             if (status == CurrentStatus.END) {
-                System.out.println("Before send");
-                System.out.println("out = " + out);
                 out.flip();
                 socketChannel.write(out);
+
                 out.compact();
                 if (isClosed) {
                     clientMap.remove(socketChannel);
@@ -744,8 +662,6 @@ public class ServerNew {
                     return;
                 }
                 status = CurrentStatus.BEGIN;
-                System.out.println("status = " + status);
-
             }
             key.interestOps(getInterestKey());
         }

@@ -18,30 +18,11 @@ public class Client {
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
 
-    //    /* byte pour que le serveur sache qu'on envoie son pseudo */
-//    private final static byte E_PSEUDO = 1;
-//    /* connection et accuse de reception de la connection au client */
-//    private final static byte CO_CLIENT_TO_CLIENT = 2;
-//    private final static byte ACK_CO_CLIENT = 3;
-//    /* envoie d'un message ou d'un fichier a un client */
-//    private final static byte M_CLIENT_TO_CLIENT = 4;
-//    private final static byte F_CLIENT_TO_CLIENT = 5;
-//    /* deconnection du client */
-//    private final static byte DC_PSEUDO = 6;
-//    /* envoie et reception de la liste des clients */
-//    private final static byte D_LIST_CLIENT_CO = 7;
-//    private final static byte R_LIST_CLIENT_CO = 8;
-//    /* Concerne l'envoie et la reception */
-//    private final static byte M_ALL = 9;
-//    /* reception pseudo */
-//    private final static byte R_PSEUDO = 10;
-//    /* envoie adresse du serveur du client au serveur principal */
-//    private final static byte E_ADDR_SERV_CLIENT = 11;
     /*
      * Le temps que doit attendre le programme entre deux actualisation de la
      * liste
      */
-    private final static long ACTU_LIST_TIME_MILLIS = 1000 * 10;
+    private final static long ACTU_LIST_TIME_MILLIS = 1000 * 5;
     private final static int BUFFER_SIZE = 1024;
     private final Scanner scan;
     private final List<Thread> tabThreadClient;
@@ -119,7 +100,7 @@ public class Client {
         try {
             serverBeforeStrip = serverSocketChannel.getLocalAddress().toString();
         } catch (IOException e) {
-            System.err.println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
+            System.err.println("Erreur lors de l'ecriture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
             return;
@@ -134,7 +115,7 @@ public class Client {
         try {
             socket.write(bInfoServerToServer);
         } catch (IOException e) {
-            System.err.println("Erreur lors de l'�criture d'un paquet du serveur , Serveur deconnecter");
+            System.err.println("Erreur lors de l'ecriture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
             return;
@@ -194,11 +175,11 @@ public class Client {
             } while (!bReceive.hasRemaining());
             int test = bReceive.getInt();
             if (test == 1) {
-                System.out.println("pseudo enregistr�");
+                System.out.println("pseudo enregistre");
                 nickname = tmp;
                 return true;
             } else if (test == 2) {
-                System.out.println("Vous avez deja� choisi votre pseudo");
+                System.out.println("Vous avez deja choisi votre pseudo");
                 return false;
             } else if (test == 0) {
                 return false;
@@ -263,7 +244,7 @@ public class Client {
                 Byte b = buffByte.get();
                 PacketType bb2 = PacketType.encode(b);
                 switch (bb2) {
-                    case CO_CLIENT_TO_CLIENT:
+                    case E_CO_CLIENT_TO_CLIENT:
                         decodeCoClient(buffByte);
                         break;
                     case R_LIST_CLIENT_CO:
@@ -331,8 +312,7 @@ public class Client {
 
         buffPseudo.flip();
         buffMessenger.flip();
-        System.out.println("[all] " + UTF8_charset.decode(buffPseudo) + " : "
-                + UTF8_charset.decode(buffMessenger));
+        System.out.println("[all] " + UTF8_charset.decode(buffPseudo) + " : " + UTF8_charset.decode(buffMessenger));
     }
 
     private void decodeCoClient(ByteBuffer buffByte) {
@@ -345,10 +325,7 @@ public class Client {
         }
         buffName.flip();
         String user = UTF8_charset.decode(buffName).toString();
-        System.out
-                .println(user
-                        + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept "
-                        + user);
+        System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
         canAccept = true;
     }
 
@@ -444,7 +421,7 @@ public class Client {
         // envoyer demande a pseudo connect
         System.out.println("Demande de connexion envoyer");
         ByteBuffer buffConnect = ByteBuffer.allocate(BUFFER_SIZE);
-        buffConnect.put(PacketType.CO_CLIENT_TO_CLIENT.getValue())
+        buffConnect.put(PacketType.E_CO_CLIENT_TO_CLIENT.getValue())
                 .putInt(pseudoConnect.length())
                 .put(UTF8_charset.encode(pseudoConnect))
                 .putInt(nickname.length()).put(UTF8_charset.encode(nickname));
@@ -502,8 +479,7 @@ public class Client {
                 // est
                 // necessaire
                 s = serverSocketChannel.accept();
-                ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES
-                        + Byte.BYTES);
+                ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
                 ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
                 if (null == (buff = readAll(buff, s))) {
                     s.close();
@@ -565,8 +541,7 @@ public class Client {
                     bMessage.flip();
                     friends.forEach((name, socketFriend) -> {
                         if (socketFriend.equals(s)) {
-                            System.out.println("[private] from " + name + " : "
-                                    + UTF8_charset.decode(bMessage));
+                            System.out.println("[private] from " + name + " : " + UTF8_charset.decode(bMessage));
                         }
                     });
                     break;
@@ -657,12 +632,9 @@ public class Client {
                                 }
                             } else {
                                 if (mapClient.containsKey(words[1])) {
-                                    System.out.println("Il faut vous connecter au client "
-                                            + words[1]
-                                            + " avant de lui envoyer des messages privee");
+                                    System.out.println("Il faut vous connecter au client " + words[1] + " avant de lui envoyer des messages privee");
                                 } else {
-                                    System.out.println("Le client " + words[1]
-                                            + " n'existe pas");
+                                    System.out.println("Le client " + words[1] + " n'existe pas");
                                 }
                             }
                         }
@@ -672,8 +644,7 @@ public class Client {
                                 if (words.length < 2) {
                                     System.err.println("Il faut donner un nom d'utilisateur sur lequel accepter");
                                 } else if (words.length > 2) {
-                                    System.err
-                                            .println("Trop d'argument , format /accept user");
+                                    System.err.println("Trop d'argument , format /accept user");
                                 } else {
                                     try {
                                         queueACK.put(words[1]);
@@ -683,8 +654,7 @@ public class Client {
                                     canAccept = false;
                                 }
                             } else {
-                                System.err
-                                        .println("Vous ne pouvez pas accepter de connexion si personne ne vous le demande");
+                                System.err.println("Vous ne pouvez pas accepter de connexion si personne ne vous le demande");
                             }
                         }
                         // /////////////////////////////////////////////////////////
@@ -706,8 +676,7 @@ public class Client {
                                             System.out.println("Le client " + words[1] + " n'existe pas");
                                         }
                                     } else {
-                                        System.out.println("Vous etes deja connecte au client "
-                                                + words[1]);
+                                        System.out.println("Vous etes deja connecte au client " + words[1]);
                                     }
                                 }
                             } else {
@@ -744,8 +713,7 @@ public class Client {
                         }
                         // /////////////////////////////////////////////////////////
                         else {
-                            System.err
-                                    .println("Commande inconnu : " + words[0]);
+                            System.err.println("Commande inconnu : " + words[0]);
                             listeCommande();
                         }
                     }
@@ -759,8 +727,7 @@ public class Client {
         try {
             socket.write(b);
         } catch (IOException e) {
-            System.err
-                    .println("Erreur lors de la deconnection, serveur deconnecter");
+            System.err.println("Erreur lors de la deconnection, serveur deconnecter");
         }
         end = true;
         // scan.close();
@@ -825,7 +792,7 @@ public class Client {
 
     private enum PacketType {
         E_PSEUDO(1),
-        CO_CLIENT_TO_CLIENT(2),
+        E_CO_CLIENT_TO_CLIENT(2),
         ACK_CO_CLIENT(3),
         /* envoie d'un message ou d'un fichier a un client */
         M_CLIENT_TO_CLIENT(4),
@@ -840,8 +807,8 @@ public class Client {
         /* reception pseudo */
         R_PSEUDO(10),
         /* envoie adresse du serveur du client au serveur principal */
-        E_ADDR_SERV_CLIENT(11);
-
+        E_ADDR_SERV_CLIENT(11),
+        R_CO_CLIENT_TO_CLIENT(12);
         private final byte value;
 
         PacketType(int value) {
