@@ -16,9 +16,9 @@ import java.util.Set;
  */
 public class ServerNew {
 
-    private final int BUFF_SIZE = 1024;
+    private final static int BUFF_SIZE = 1024;
 
-    private final int MAX_SIZE = 1073741824; // Taille maximal d'un buffer (donc MAX_SIZE octet entrant au maximum)
+    private final static int MAX_SIZE = 1073741824; // Taille maximal d'un buffer (donc MAX_SIZE octet entrant au maximum)
 
 //    /* Recuperation du pseudo que le client envoie */
 //    private final static byte E_PSEUDO = 1;
@@ -491,11 +491,15 @@ public class ServerNew {
             String dest = UTF8_charset.decode(destBuff).toString();
 
 
-            System.out.println("Out = " + out);
+            System.out.println("CO CLIENT Out = " + out);
             System.out.println(clientMap.values());
             // TODO Peut etre des changement à faire ici
             if (!findClientInMap(dest)) {
                 in.compact();
+                out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+                out.put((byte) -1)// -1 -> placeholder
+                        .putInt(0);
+
                 status = CurrentStatus.END;
 //Si reponse a ecrire au client demandant le connection
 //                 Faire buffer "out" avec la reponse
@@ -506,16 +510,19 @@ public class ServerNew {
             }
 
             // Ne touche que au buffer Out du destinataire
-            clientMap.values().forEach((clientInfo) -> {
-                if (dest.equals(clientInfo.getName())) {
-                    System.err.println("/////////////// TESTTTTTTTTTTT ///////////////////////////////");
-                    clientInfo.out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
-                    clientInfo.out.put(PacketType.CO_CLIENT_TO_CLIENT.getValue())
-                            .putInt(sizeSrc)
-                            .put(srcBuff);
-                    clientInfo.key.interestOps(SelectionKey.OP_WRITE);
-                    // Changer la clé du client Info
+            clientMap.forEach((sc, clientInfo) -> {
+                if (!sc.equals(socketChannel)) {
+                    if (dest.equals(clientInfo.getName())) {
+                        System.err.println("/////////////// TESTTTTTTTTTTT ///////////////////////////////");
+                        clientInfo.out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + sizeSrc);
+                        clientInfo.out.put(PacketType.CO_CLIENT_TO_CLIENT.getValue())
+                                .putInt(sizeSrc)
+                                .put(srcBuff);
+                        clientInfo.key.interestOps(SelectionKey.OP_WRITE);
+                        // Changer la clé du client Info
+                    }
                 }
+
             });
 
 //            selector.keys().forEach(selectionKey -> {
@@ -527,8 +534,9 @@ public class ServerNew {
 //                }
 //            });
             /// Bidouille ///
-//            out = ByteBuffer.allocate()
-
+            out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+            out.put((byte) -1)// -1 -> placeholder
+                    .putInt(1);
             status = CurrentStatus.END;
             in.compact();
 
@@ -592,7 +600,7 @@ public class ServerNew {
             total[0] += Integer.BYTES;
             clientMap.forEach((key, clientInfo) -> {
                 // Peut se simplifier mais cette forme est plus clair
-                long clientSize = Integer.BYTES + clientInfo.getName().length() + Integer.BYTES + clientInfo.getAdressServer().toString().length();
+                long clientSize = Integer.BYTES + clientInfo.getName().length() + Integer.BYTES + clientInfo.getAdressServer().toString().replace("/", "").length();
                 total[0] += clientSize;
             });
             return total[0];
@@ -708,7 +716,10 @@ public class ServerNew {
                 }
             }
             buildOutBuffer(key);
-            key.interestOps(getInterestKey());
+            int interest;
+            if ((interest = getInterestKey()) != 0) {
+                key.interestOps(interest);
+            }
         }
 
         private void doWrite(SelectionKey key) throws IOException {
@@ -734,6 +745,7 @@ public class ServerNew {
                 }
                 status = CurrentStatus.BEGIN;
                 System.out.println("status = " + status);
+
             }
             key.interestOps(getInterestKey());
         }
