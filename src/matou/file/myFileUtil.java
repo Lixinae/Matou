@@ -52,20 +52,22 @@ public class myFileUtil {
 //        return endBuffer;
         byte[] buffer = Files.readAllBytes(path);
         ByteBuffer endBuffer = ByteBuffer.allocate(size.intValue());
+
+        ///////// TEST ////////
+
+
+        ///////////////////////
+
         endBuffer.put(buffer);
         return endBuffer;
     }
 
     /**
-     *
      * @param byteBuffer buffer de reception des données
-     * @param filename nom du fichier voulu en sortie
+     * @param filename   nom du fichier voulu en sortie
      * @return un boolean qui indique si on a bien tout écrit ou non
      */
     public static boolean readInBufferAndWriteInFile(ByteBuffer byteBuffer, String filename) {
-
-        byteBuffer.flip();
-//        byte[] buffer = new byte[BUFF_SIZE];
 
         Path path = Paths.get(filename);
         if (Files.exists(path)) {
@@ -85,9 +87,24 @@ public class myFileUtil {
 //
 //            outputStream.write(buffer);
 //        }
-
-
         return true;
+    }
+
+    // Code a ecrire avant fonction read in Buffer
+    // Donner le buffer "tempo" au
+
+    /**
+     * @param in   Buffer dans lequel on lit
+     * @param size Taille de la zone que l'on veut lire
+     * @return Le nouveau buffer de taille "size" et contenant une partie du buffer In
+     */
+    public ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
+        ByteBuffer tempo = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            tempo.put(in.get());
+        }
+        tempo.flip();
+        return tempo;
     }
 
 }
