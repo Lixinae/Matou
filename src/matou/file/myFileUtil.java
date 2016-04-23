@@ -12,7 +12,7 @@ import java.nio.file.Paths;
  */
 public class myFileUtil {
 
-    private final int MAX_SIZE = 1000; // TODO: 22/04/2016 -> change that
+    private final static int MAX_SIZE = 1000; // TODO: 22/04/2016 -> change that
     private final int BUFF_SIZE = 4096;
 
     public myFileUtil() {
@@ -20,8 +20,8 @@ public class myFileUtil {
     }
 
     /**
-     * @param name nom du fichier en entrée
-     * @return bytebuffer à envoyé
+     * @param name nom du fichier en entree
+     * @return bytebuffer à envoyee
      * @throws IOException
      */
     public static ByteBuffer readAndStoreInBuffer(String name) throws IOException {
@@ -63,9 +63,9 @@ public class myFileUtil {
     }
 
     /**
-     * @param byteBuffer buffer de reception des données
+     * @param byteBuffer buffer de reception des donnees
      * @param filename   nom du fichier voulu en sortie
-     * @return un boolean qui indique si on a bien tout écrit ou non
+     * @return un boolean qui indique si on a bien tout ecrit ou non
      */
     public static boolean readInBufferAndWriteInFile(ByteBuffer byteBuffer, String filename) {
 
