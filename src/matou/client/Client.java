@@ -9,11 +9,11 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class Client {
@@ -28,7 +28,7 @@ public class Client {
     private final static int BUFFER_SIZE = 1024;
     private final Scanner scan;
     private final List<Thread> tabThreadClient;
-    private final HashMap<String, SocketChannel> friends;
+    private final ConcurrentHashMap<String, SocketChannel> friends;
     private final SocketChannel socket;
     private final ServerSocketChannel serverSocketChannel;
     private String nickname;
@@ -36,7 +36,7 @@ public class Client {
      * map des client et des amis, mapClient ne peux pas etre final car il est
      * recrer a chaque fois que l'on actualise la liste
      */
-    private HashMap<String, InetSocketAddress> mapClient;
+    private ConcurrentHashMap<String, InetSocketAddress> mapClient;
     private BlockingQueue<String> queueAll = new ArrayBlockingQueue<>(1);
     private BlockingQueue<String> queueACK = new ArrayBlockingQueue<>(1);
     private BlockingQueue<String> queueConnect = new ArrayBlockingQueue<>(1);
@@ -50,8 +50,8 @@ public class Client {
 
     public Client(String host, int port) throws IOException {
 
-        mapClient = new HashMap<>();
-        friends = new HashMap<>();
+        mapClient = new ConcurrentHashMap<>();
+        friends = new ConcurrentHashMap<>();
         socket = SocketChannel.open();
         socket.connect(new InetSocketAddress(host, port));
 
@@ -175,7 +175,7 @@ public class Client {
             } while (!bReceive.hasRemaining());
             int test = bReceive.getInt();
             if (test == 1) {
-                System.out.println("pseudo enregistre");
+                System.out.println("Pseudo enregistrer");
                 nickname = tmp;
                 return true;
             } else if (test == 2) {
@@ -257,7 +257,7 @@ public class Client {
                         decodeR_CO_CLIENT_TO_CLIENT(buffByte);
                         break;
                     default:
-                        System.err.println("Error : Unkown code " + b);
+                        System.err.println("Error : Code inconnu " + b);
                         break;
                 }
             }
@@ -295,11 +295,6 @@ public class Client {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-//                try {
-//                    Thread.sleep(1);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
             }
         });
     }
@@ -333,13 +328,13 @@ public class Client {
         }
         buffName.flip();
         String user = UTF8_charset.decode(buffName).toString();
-        System.out.println(user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
+        System.out.println("L'utilisateur " + user + " souhaiterai se connecter avec vous,\npour ce faire, vous devez tapez /accept " + user);
         canAccept = true;
     }
 
     private void decodeRList(ByteBuffer buffByte) {
         int size;
-        mapClient = new HashMap<>();
+        mapClient = new ConcurrentHashMap<>();
         for (size = buffByte.getInt(); size > 0; size--) {
             int sizePseudo = buffByte.getInt();
             ByteBuffer buffClient = ByteBuffer.allocate(sizePseudo);
@@ -365,9 +360,9 @@ public class Client {
 
         int response = buffByte.getInt();
         if (response == 0) {
-            System.out.println("Le client demandé n'existe pas");
+            System.out.println("Le client demande n'existe pas");
         } else if (response == 1) {
-            System.out.println("La requete a bien été transmise au client");
+            System.out.println("La requete a bien ete transmise au client");
         }
     }
 
@@ -427,13 +422,15 @@ public class Client {
             System.err.println("Erreur lors de la connexion au client " + pseudoACK);
             exitClient();
         }
+        if (socketACK != null) {
+            friends.put(pseudoACK, socketACK);
+            System.out.println("Connexion accepter");
+            System.out.println("Vous etes maintenant connecter avec " + pseudoACK);
+            Thread tmp = clientClient(socketACK);
+            tabThreadClient.add(tmp);
+            tmp.start();
+        }
 
-        friends.put(pseudoACK, socketACK);
-        System.out.println("Connexion accepter");
-        System.out.println("Vous etes maintenant connecter avec " + pseudoACK);
-        Thread tmp = clientClient(socketACK);
-        // tabThreadClient.add(tmp);
-        tmp.start();
     }
 
     private void sendPseudoConnect(String pseudoConnect) {
@@ -465,11 +462,8 @@ public class Client {
             try {
                 buff = FileUtils.readAndStoreInBuffer(fileName);
                 if (buff != null) {
-
                     ByteBuffer buffSendFile = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + nickname.length() + Integer.BYTES + fileName.length() + Integer.BYTES + buff.remaining());
-                    System.out.println("BuffSend File" + buffSendFile);
                     ByteBuffer buffFileName = UTF8_charset.encode(fileName);
-                    buff.flip();
                     buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue())
                             .putInt(nickname.length())
                             .put(UTF8_charset.encode(nickname))
@@ -486,9 +480,6 @@ public class Client {
         });
         tabThreadClient.add(t);
         t.start();
-        // verifier que le client est dans la liste d'ami
-        // lire dans filename
-        // envoyer ce qui est lu en thread
     }
 
     private void sendMessageToClient(String messageToClient, String dest) {
@@ -503,7 +494,6 @@ public class Client {
     private void SendToFriend(final String destCpy, ByteBuffer buffSend) {
         friends.forEach((name, socketFriend) -> {
             if (name.equals(destCpy)) {
-                System.out.println("This is a test");
                 try {
                     socketFriend.write(buffSend);
                 } catch (IOException e) {
@@ -517,16 +507,7 @@ public class Client {
         return new Thread(() -> {
             SocketChannel s;
             try {
-                System.out.println("Attend que le client se connecte");// TODO
-                // parler
-                // de
-                // l'acceptation
-                // de
-                // l'autre
-                // client
-                // qui
-                // est
-                // necessaire
+                System.out.println("Attend que le client se connecte");
                 s = serverSocketChannel.accept();
                 ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
                 ByteBuffer buffName = ByteBuffer.allocate(BUFFER_SIZE);
@@ -571,7 +552,7 @@ public class Client {
             if ((buffRead = readAll(buffRead, s)) == null) {
                 friends.forEach((name, socketFriend) -> {
                     if (socketFriend.equals(s)) {
-                        System.out.println("client " + name + " s'est deconnecter");
+                        System.out.println("Client " + name + " s'est deconnecter");
                     }
                 });
                 Thread.currentThread().interrupt();
@@ -614,9 +595,10 @@ public class Client {
             int sizeFileName = buff.getInt();
             ByteBuffer buffFileName = FileUtils.copyPartialBuffer(buff, sizeFileName);
             String fileName = UTF8_charset.decode(buffFileName).toString();
-            System.out.println(UTF8_charset.decode(buffNameClient) + " vous envoie le fichier " + fileName);
+            System.out.println("L'utilisateur " + UTF8_charset.decode(buffNameClient) + " vous envoie le fichier " + fileName);
             int sizeFile = buff.getInt();
             ByteBuffer buffFile = FileUtils.copyPartialBuffer(buff, sizeFile);
+
             FileUtils.readInBufferAndWriteInFile(buffFile, fileName);
         });
     }
@@ -850,14 +832,7 @@ public class Client {
                         + "/all monMessage pour envoyer un message a tout les clients\n"
                         + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
                         + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
-                        + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo (non implementer actuellement)\n" // TODO
-                        // enlever
-                        // fin
-                        // de
-                        // message
-                        // une
-                        // fois
-                        // implemente
+                        + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo \n"
                         + "/friends affiche la liste des personnes avec qui on est connecter\n"
                         + "/clients affiche la liste des clients connecter au serveur\n"
                         + "/exit pour quittez la messagerie");

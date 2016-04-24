@@ -35,26 +35,10 @@ public class FileUtils {
             System.out.println("Le fichier " + name + " est trop gros");
             return null;
         }
-//        byte[] buffer = new byte[BUFF_SIZE];
-//        InputStream inputStream = Files.newInputStream(path);
-//        int nbRead = 0;
-//
-//
-//        ByteBuffer endBuffer = ByteBuffer.allocate(size.intValue());
-//        endBuffer.putInt(size.intValue());
-//        while ((inputStream.read(buffer)) != -1) {
-//            endBuffer.put(buffer);
-//        }
-//        return endBuffer;
         byte[] buffer = Files.readAllBytes(path);
         ByteBuffer endBuffer = ByteBuffer.allocate(size.intValue());
-
-        ///////// TEST ////////
-
-
-        ///////////////////////
-
         endBuffer.put(buffer);
+        endBuffer.flip();
         return endBuffer;
     }
 
@@ -66,11 +50,15 @@ public class FileUtils {
     public static boolean readInBufferAndWriteInFile(ByteBuffer byteBuffer, String filename) {
 
         Path path = Paths.get(filename);
-        if (Files.exists(path)) {
-            System.out.println("Le fichier " + filename + " existe deja");
-            filename = filename + "-copy";
-            path = Paths.get(filename);
+        int i = 0;
+        String cpy = filename;
+        while (Files.exists(path)) {
+            System.out.println("Le fichier " + cpy + " existe deja");
+            cpy = filename + "_" + i;
+            path = Paths.get(cpy);
+            ++i;
         }
+        System.out.println("Ajout d'une copie avec pour nom " + cpy);
         byte[] buff = byteBuffer.array();
         try {
             Files.write(path, buff);
@@ -78,18 +66,8 @@ public class FileUtils {
             e.printStackTrace();
             return false;
         }
-//        OutputStream outputStream = Files.newOutputStream(path);
-//        while (byteBuffer.hasRemaining()) {
-//
-//            byteBuffer.get(buffer);
-//
-//            outputStream.write(buffer);
-//        }
         return true;
     }
-
-    // Code a ecrire avant fonction read in Buffer
-    // Donner le buffer "tempo" au
 
     /**
      * @param in   Buffer dans lequel on lit
