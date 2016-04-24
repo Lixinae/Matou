@@ -13,7 +13,6 @@ import java.nio.file.Paths;
 public class myFileUtil {
 
     private final static int MAX_SIZE = 1000; // TODO: 22/04/2016 -> change that
-    private final int BUFF_SIZE = 4096;
 
     public myFileUtil() {
 

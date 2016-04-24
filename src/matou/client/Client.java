@@ -14,6 +14,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import matou.file.myFileUtil;
+
 public class Client {
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
@@ -353,6 +355,7 @@ public class Client {
         actualiseListFriend();
     }
 
+    //changer poll en polltime et enlever le sleep(1) de la fonction precedente
     private void send() {
         String arg0, arg1;
         if ((arg0 = queueAll.poll()) != null) {
@@ -441,6 +444,19 @@ public class Client {
     }
 
     private void sendFile(String fileName, String userName) {
+    	try {
+			ByteBuffer buff = myFileUtil.readAndStoreInBuffer(fileName);
+    		ByteBuffer buffSendFile = ByteBuffer.allocate(buff.capacity()+Byte.BYTES);
+			buff.flip();
+			buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue());
+			buffSendFile.putInt(buff.remaining());
+			buffSendFile.put(buff);
+			buffSendFile.flip();
+			SendToFriend(userName, buffSendFile);
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
         // verifier que le client est dans la liste d'ami
         // lire dans filename
         // envoyer ce qui est lu en thread
@@ -453,7 +469,11 @@ public class Client {
                 .putInt(messageToClient.length())
                 .put(UTF8_charset.encode(messageToClient));
         buffSend.flip();
-        friends.forEach((name, socketFriend) -> {
+        SendToFriend(destCpy, buffSend);
+    }
+
+	private void SendToFriend(final String destCpy, ByteBuffer buffSend) {
+		friends.forEach((name, socketFriend) -> {
             if (name.equals(destCpy)) {
                 try {
                     socketFriend.write(buffSend);
@@ -462,7 +482,7 @@ public class Client {
                 }
             }
         });
-    }
+	}
 
     private Thread serverClient() {
         return new Thread(() -> {
@@ -546,7 +566,10 @@ public class Client {
                     });
                     break;
                 case F_CLIENT_TO_CLIENT:
+                	//faire ici
                     break;
+			default:
+				throw new IllegalStateException("unknow byte");
             }
         }
     }
