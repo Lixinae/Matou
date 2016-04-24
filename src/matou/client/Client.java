@@ -290,12 +290,16 @@ public class Client {
     private Thread threadSend() {
         return new Thread(() -> {
             while (!Thread.interrupted()) {
-                send();
                 try {
-                    Thread.sleep(1);
+                    send();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+//                try {
+//                    Thread.sleep(1);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
             }
         });
     }
@@ -368,21 +372,21 @@ public class Client {
     }
 
     //changer poll en polltime et enlever le sleep(1) de la fonction precedente
-    private void send() {
+    private void send() throws InterruptedException {
         String arg0, arg1;
-        if ((arg0 = queueAll.poll()) != null) {
+        if ((arg0 = queueAll.poll(50, TimeUnit.MILLISECONDS)) != null) {
             sendMessageAll(arg0);
         }
-        if ((arg0 = queueACK.poll()) != null) {
+        if ((arg0 = queueACK.poll(50, TimeUnit.MILLISECONDS)) != null) {
             sendPseudoAck(arg0);
         }
-        if ((arg0 = queueConnect.poll()) != null) {
+        if ((arg0 = queueConnect.poll(50, TimeUnit.MILLISECONDS)) != null) {
             sendPseudoConnect(arg0);
         }
-        if ((arg0 = queueFile.poll()) != null && (arg1 = queueUser.poll()) != null) {
+        if ((arg0 = queueFile.poll(50, TimeUnit.MILLISECONDS)) != null && (arg1 = queueUser.poll(50, TimeUnit.MILLISECONDS)) != null) {
             sendFile(arg0, arg1);
         }
-        if ((arg0 = queueClient.poll()) != null && (arg1 = queueDest.poll()) != null) {
+        if ((arg0 = queueClient.poll(50, TimeUnit.MILLISECONDS)) != null && (arg1 = queueDest.poll(50, TimeUnit.MILLISECONDS)) != null) {
             sendMessageToClient(arg0, arg1);
         }
     }
@@ -462,13 +466,13 @@ public class Client {
                 buff = FileUtils.readAndStoreInBuffer(fileName);
                 if (buff != null) {
 
-                    ByteBuffer buffSendFile = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + userName.length() + Integer.BYTES + fileName.length() + Integer.BYTES + buff.remaining());
+                    ByteBuffer buffSendFile = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + nickname.length() + Integer.BYTES + fileName.length() + Integer.BYTES + buff.remaining());
                     System.out.println("BuffSend File" + buffSendFile);
                     ByteBuffer buffFileName = UTF8_charset.encode(fileName);
                     buff.flip();
                     buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue())
-                            .putInt(userName.length())
-                            .put(UTF8_charset.encode(userName))
+                            .putInt(nickname.length())
+                            .put(UTF8_charset.encode(nickname))
                             .putInt(fileName.length())
                             .put(buffFileName)
                             .putInt(buff.remaining())
@@ -591,7 +595,7 @@ public class Client {
                         }
                     });
                     break;
-                case F_CLIENT_TO_CLIENT:
+                case F_CLIENT_TO_CLIENT:// probleme viens du faite que c'est en thread
                     Thread t = receiveFile(buffRead);
                     tabThreadClient.add(t);
                     t.start();
