@@ -12,15 +12,12 @@ import java.nio.file.Paths;
  */
 public class myFileUtil {
 
-    private final static int MAX_SIZE = 1000; // TODO: 22/04/2016 -> change that
+    private final static int MAX_SIZE = 50000000; // 50Mo
 
-    public myFileUtil() {
-
-    }
 
     /**
      * @param name nom du fichier en entree
-     * @return bytebuffer à envoyee
+     * @return bytebuffer a envoyee
      * @throws IOException
      */
     public static ByteBuffer readAndStoreInBuffer(String name) throws IOException {
@@ -78,6 +75,7 @@ public class myFileUtil {
             Files.write(path, buff);
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
 //        OutputStream outputStream = Files.newOutputStream(path);
 //        while (byteBuffer.hasRemaining()) {
@@ -97,7 +95,7 @@ public class myFileUtil {
      * @param size Taille de la zone que l'on veut lire
      * @return Le nouveau buffer de taille "size" et contenant une partie du buffer In
      */
-    public ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
+    public static ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
         ByteBuffer tempo = ByteBuffer.allocate(size);
         for (int i = 0; i < size; i++) {
             tempo.put(in.get());

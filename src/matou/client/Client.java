@@ -444,19 +444,28 @@ public class Client {
     }
 
     private void sendFile(String fileName, String userName) {
-    	try {
-			ByteBuffer buff = myFileUtil.readAndStoreInBuffer(fileName);
-    		ByteBuffer buffSendFile = ByteBuffer.allocate(buff.capacity()+Byte.BYTES);
-			buff.flip();
-			buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue());
-			buffSendFile.putInt(buff.remaining());
-			buffSendFile.put(buff);
-			buffSendFile.flip();
-			SendToFriend(userName, buffSendFile);
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+    		Thread t = new Thread(()->{
+    			ByteBuffer buff;
+				try {
+					buff = myFileUtil.readAndStoreInBuffer(fileName);
+	        		ByteBuffer buffSendFile = ByteBuffer.allocate(buff.capacity()+Byte.BYTES);
+	        		ByteBuffer buffFileName = UTF8_charset.encode(fileName);
+	    			buff.flip();
+	    			buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue());
+	    			buffSendFile.putInt(nickname.length());
+	    			buffSendFile.put(UTF8_charset.encode(nickname));
+	    			buffSendFile.putInt(fileName.length());
+	    			buffSendFile.put(buffFileName);
+	    			buffSendFile.putInt(buff.remaining());
+	    			buffSendFile.put(buff);
+	    			buffSendFile.flip();
+	    			SendToFriend(userName, buffSendFile);
+    			} catch (Exception e) {
+					e.printStackTrace();
+				}
+    		});
+    		tabThreadClient.add(t);
+    		t.start();
         // verifier que le client est dans la liste d'ami
         // lire dans filename
         // envoyer ce qui est lu en thread
@@ -551,9 +560,10 @@ public class Client {
             buffRead.flip();
             byte b = buffRead.get();
             PacketType bb2 = PacketType.encode(b);
+            int size;
             switch (bb2) {
                 case M_CLIENT_TO_CLIENT:
-                    int size = buffRead.getInt();
+                    size = buffRead.getInt();
                     ByteBuffer bMessage = ByteBuffer.allocate(size);
                     for (int i = 0; i < size; i++) {
                         bMessage.put(buffRead.get());
@@ -566,15 +576,32 @@ public class Client {
                     });
                     break;
                 case F_CLIENT_TO_CLIENT:
-                	//faire ici
+                	Thread t =receiveFile(buffRead);
+                	tabThreadClient.add(t);
+                	t.start();
                     break;
 			default:
-				throw new IllegalStateException("unknow byte");
+                System.err.println("Error : Unkown code " + b);
+                break;
             }
         }
     }
 
-    private void demandeList() {
+    private Thread receiveFile(ByteBuffer buff) {
+    	return new Thread(()->{
+        	int sizeNameClient = buff.getInt();
+        	ByteBuffer buffNameClient = myFileUtil.copyPartialBuffer(buff, sizeNameClient);
+    		int sizeFileName = buff.getInt();
+    		ByteBuffer buffFileName = myFileUtil.copyPartialBuffer(buff, sizeFileName);
+    		String fileName = UTF8_charset.decode(buffFileName).toString();
+        	System.out.println(UTF8_charset.decode(buffNameClient) + " vous envoie le fichier "+fileName);
+    		int sizeFile = buff.getInt();
+    		ByteBuffer buffFile = myFileUtil.copyPartialBuffer(buff, sizeFile);
+    		myFileUtil.readInBufferAndWriteInFile(buffFile,fileName);
+    	});
+	}
+
+	private void demandeList() {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
         buff.put(PacketType.D_LIST_CLIENT_CO.getValue());
         buff.flip();
