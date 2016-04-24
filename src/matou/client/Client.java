@@ -1,5 +1,7 @@
 package matou.client;
 
+import matou.file.FileUtils;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -13,8 +15,6 @@ import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import matou.file.myFileUtil;
 
 public class Client {
 
@@ -120,7 +120,7 @@ public class Client {
             System.err.println("Erreur lors de l'ecriture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
-            return;
+//            return;
         }
     }
 
@@ -162,8 +162,7 @@ public class Client {
             ByteBuffer bReceive = ByteBuffer.allocate(BUFFER_SIZE);
             do {
                 try {
-                    while (socket.read(bReceive) == 0)
-                        ;
+                    while (socket.read(bReceive) == 0) ;
                 } catch (IOException e) {
                     System.err
                             .println("Erreur lors de lecture d'un paquet du serveur , Serveur deconnecter");
@@ -172,8 +171,7 @@ public class Client {
                     return true;
                 }
                 bReceive.flip();
-                while (bReceive.get() != PacketType.R_PSEUDO.getValue() && bReceive.hasRemaining())
-                    ;
+                while (bReceive.get() != PacketType.R_PSEUDO.getValue() && bReceive.hasRemaining()) ;
             } while (!bReceive.hasRemaining());
             int test = bReceive.getInt();
             if (test == 1) {
@@ -255,6 +253,9 @@ public class Client {
                     case E_M_ALL:
                         decodeMessageAll(buffByte);
                         break;
+                    case R_CO_CLIENT_TO_CLIENT:
+                        decodeR_CO_CLIENT_TO_CLIENT(buffByte);
+                        break;
                     default:
                         System.err.println("Error : Unkown code " + b);
                         break;
@@ -263,6 +264,7 @@ public class Client {
             buffByte.compact();
         }
     }
+
 
     private Thread threadRead() {
         return new Thread(() -> {
@@ -355,6 +357,16 @@ public class Client {
         actualiseListFriend();
     }
 
+    private void decodeR_CO_CLIENT_TO_CLIENT(ByteBuffer buffByte) {
+
+        int response = buffByte.getInt();
+        if (response == 0) {
+            System.out.println("Le client demandé n'existe pas");
+        } else if (response == 1) {
+            System.out.println("La requete a bien été transmise au client");
+        }
+    }
+
     //changer poll en polltime et enlever le sleep(1) de la fonction precedente
     private void send() {
         String arg0, arg1;
@@ -444,46 +456,50 @@ public class Client {
     }
 
     private void sendFile(String fileName, String userName) {
-    		Thread t = new Thread(()->{
-    			ByteBuffer buff;
-				try {
-					buff = myFileUtil.readAndStoreInBuffer(fileName);
-	        		ByteBuffer buffSendFile = ByteBuffer.allocate(buff.capacity()+Byte.BYTES);
-	        		ByteBuffer buffFileName = UTF8_charset.encode(fileName);
-	    			buff.flip();
-	    			buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue());
-	    			buffSendFile.putInt(nickname.length());
-	    			buffSendFile.put(UTF8_charset.encode(nickname));
-	    			buffSendFile.putInt(fileName.length());
-	    			buffSendFile.put(buffFileName);
-	    			buffSendFile.putInt(buff.remaining());
-	    			buffSendFile.put(buff);
-	    			buffSendFile.flip();
-	    			SendToFriend(userName, buffSendFile);
-    			} catch (Exception e) {
-					e.printStackTrace();
-				}
-    		});
-    		tabThreadClient.add(t);
-    		t.start();
+        Thread t = new Thread(() -> {
+            ByteBuffer buff;
+            try {
+                buff = FileUtils.readAndStoreInBuffer(fileName);
+                if (buff != null) {
+
+                    ByteBuffer buffSendFile = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + userName.length() + Integer.BYTES + fileName.length() + Integer.BYTES + buff.remaining());
+                    System.out.println("BuffSend File" + buffSendFile);
+                    ByteBuffer buffFileName = UTF8_charset.encode(fileName);
+                    buff.flip();
+                    buffSendFile.put(PacketType.F_CLIENT_TO_CLIENT.getValue())
+                            .putInt(userName.length())
+                            .put(UTF8_charset.encode(userName))
+                            .putInt(fileName.length())
+                            .put(buffFileName)
+                            .putInt(buff.remaining())
+                            .put(buff);
+                    buffSendFile.flip();
+                    SendToFriend(userName, buffSendFile);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        tabThreadClient.add(t);
+        t.start();
         // verifier que le client est dans la liste d'ami
         // lire dans filename
         // envoyer ce qui est lu en thread
     }
 
     private void sendMessageToClient(String messageToClient, String dest) {
-        final String destCpy = dest;
         ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
         buffSend.put(PacketType.M_CLIENT_TO_CLIENT.getValue())
                 .putInt(messageToClient.length())
                 .put(UTF8_charset.encode(messageToClient));
         buffSend.flip();
-        SendToFriend(destCpy, buffSend);
+        SendToFriend(dest, buffSend);
     }
 
-	private void SendToFriend(final String destCpy, ByteBuffer buffSend) {
-		friends.forEach((name, socketFriend) -> {
+    private void SendToFriend(final String destCpy, ByteBuffer buffSend) {
+        friends.forEach((name, socketFriend) -> {
             if (name.equals(destCpy)) {
+                System.out.println("This is a test");
                 try {
                     socketFriend.write(buffSend);
                 } catch (IOException e) {
@@ -491,7 +507,7 @@ public class Client {
                 }
             }
         });
-	}
+    }
 
     private Thread serverClient() {
         return new Thread(() -> {
@@ -576,32 +592,32 @@ public class Client {
                     });
                     break;
                 case F_CLIENT_TO_CLIENT:
-                	Thread t =receiveFile(buffRead);
-                	tabThreadClient.add(t);
-                	t.start();
+                    Thread t = receiveFile(buffRead);
+                    tabThreadClient.add(t);
+                    t.start();
                     break;
-			default:
-                System.err.println("Error : Unkown code " + b);
-                break;
+                default:
+                    System.err.println("Error : Unkown code " + b);
+                    break;
             }
         }
     }
 
     private Thread receiveFile(ByteBuffer buff) {
-    	return new Thread(()->{
-        	int sizeNameClient = buff.getInt();
-        	ByteBuffer buffNameClient = myFileUtil.copyPartialBuffer(buff, sizeNameClient);
-    		int sizeFileName = buff.getInt();
-    		ByteBuffer buffFileName = myFileUtil.copyPartialBuffer(buff, sizeFileName);
-    		String fileName = UTF8_charset.decode(buffFileName).toString();
-        	System.out.println(UTF8_charset.decode(buffNameClient) + " vous envoie le fichier "+fileName);
-    		int sizeFile = buff.getInt();
-    		ByteBuffer buffFile = myFileUtil.copyPartialBuffer(buff, sizeFile);
-    		myFileUtil.readInBufferAndWriteInFile(buffFile,fileName);
-    	});
-	}
+        return new Thread(() -> {
+            int sizeNameClient = buff.getInt();
+            ByteBuffer buffNameClient = FileUtils.copyPartialBuffer(buff, sizeNameClient);
+            int sizeFileName = buff.getInt();
+            ByteBuffer buffFileName = FileUtils.copyPartialBuffer(buff, sizeFileName);
+            String fileName = UTF8_charset.decode(buffFileName).toString();
+            System.out.println(UTF8_charset.decode(buffNameClient) + " vous envoie le fichier " + fileName);
+            int sizeFile = buff.getInt();
+            ByteBuffer buffFile = FileUtils.copyPartialBuffer(buff, sizeFile);
+            FileUtils.readInBufferAndWriteInFile(buffFile, fileName);
+        });
+    }
 
-	private void demandeList() {
+    private void demandeList() {
         ByteBuffer buff = ByteBuffer.allocate(Byte.BYTES);
         buff.put(PacketType.D_LIST_CLIENT_CO.getValue());
         buff.flip();
@@ -616,6 +632,7 @@ public class Client {
     private void addList(String socketC, String nameClient) {
 
         int splitIndex = socketC.lastIndexOf(':');
+
         String host = socketC.substring(0, splitIndex);
         int port = Integer.parseInt(socketC.substring(splitIndex + 1));
 
@@ -715,18 +732,20 @@ public class Client {
                                 } else if (words.length > 2) {
                                     System.err.println("Trop d'argument , format /connect user");
                                 } else {
-                                    if (!friends.containsKey(words[1])) {
-                                        if (mapClient.containsKey(words[1])) {
-                                            try {
-                                                queueConnect.put(words[1]);
-                                            } catch (Exception e) {
-                                                e.printStackTrace();
+                                    if (!words[1].equals(nickname)) {
+                                        if (!friends.containsKey(words[1])) {
+                                            if (mapClient.containsKey(words[1])) {
+                                                try {
+                                                    queueConnect.put(words[1]);
+                                                } catch (Exception e) {
+                                                    e.printStackTrace();
+                                                }
+                                            } else {
+                                                System.out.println("Le client " + words[1] + " n'existe pas");
                                             }
                                         } else {
-                                            System.out.println("Le client " + words[1] + " n'existe pas");
+                                            System.out.println("Vous etes deja connecte au client " + words[1]);
                                         }
-                                    } else {
-                                        System.out.println("Vous etes deja connecte au client " + words[1]);
                                     }
                                 }
                             } else {
@@ -737,7 +756,7 @@ public class Client {
                         else if (words[0].equals("/file")) {
                             if (words.length < 2) {
                                 System.err.println("empty file name");
-                            } else if (words.length > 2) {
+                            } else if (words.length > 3) {
                                 System.err.println("too much argument");
                             } else {
                                 try {

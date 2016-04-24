@@ -10,7 +10,7 @@ import java.nio.file.Paths;
  * Project :Matou
  * Created by Narex on 12/04/2016.
  */
-public class myFileUtil {
+public class FileUtils {
 
     private final static int MAX_SIZE = 50000000; // 50Mo
 
@@ -68,7 +68,8 @@ public class myFileUtil {
         Path path = Paths.get(filename);
         if (Files.exists(path)) {
             System.out.println("Le fichier " + filename + " existe deja");
-            return false;
+            filename = filename + "-copy";
+            path = Paths.get(filename);
         }
         byte[] buff = byteBuffer.array();
         try {
