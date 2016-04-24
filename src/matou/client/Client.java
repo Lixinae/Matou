@@ -838,6 +838,29 @@ public class Client {
                         + "/exit pour quittez la messagerie");
     }
 
+    @Override
+    public String toString() {
+        return "Client{" +
+                "  \nscan=" + scan +
+                "  \ntabThreadClient=" + tabThreadClient +
+                "  \nfriends=" + friends +
+                "  \nsocket=" + socket +
+                "  \nserverSocketChannel=" + serverSocketChannel +
+                "  \nnickname='" + nickname + '\'' +
+                "  \nmapClient=" + mapClient +
+                "  \nqueueAll=" + queueAll +
+                "  \nqueueACK=" + queueACK +
+                "  \nqueueConnect=" + queueConnect +
+                "  \nqueueFile=" + queueFile +
+                "  \nqueueUser=" + queueUser +
+                "  \nqueueDest=" + queueDest +
+                "  \nqueueClient=" + queueClient +
+                "  \nqueueServer=" + queueServer +
+                "  \ncanAccept=" + canAccept +
+                "  \nend=" + end +
+                "\n}";
+    }
+
     private enum PacketType {
         E_PSEUDO(1),
         E_CO_CLIENT_TO_CLIENT(2),
