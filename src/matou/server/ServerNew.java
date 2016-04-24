@@ -215,6 +215,7 @@ public class ServerNew {
                 System.out.println("CurrentOp = " + currentOp);
                 status = CurrentStatus.MIDDLE;
                 in.compact();
+                in.flip();
                 //return;
             }
 //            System.err.println("////////////////////////////////////////////////////////////////");
@@ -227,8 +228,8 @@ public class ServerNew {
             // Une fois qu'on a lu le 1er byte on passe à la suite
             // Dès qu'une opération est effectué , le status passe à "END" , ce qui permettra d'écrire la réponse au client
             if (status == CurrentStatus.MIDDLE) {
-//                System.err.println("");
-                in.flip();
+                // reset position au 1er bit lu si jamais on reboucle , pour pouvoir tout relire sauf le 1er bit deja lu
+                in.position(0);
                 PacketType bb2 = PacketType.encode(currentOp);
                 switch (bb2) {
                     case E_PSEUDO:
@@ -238,7 +239,6 @@ public class ServerNew {
                         break;
                     case E_CO_CLIENT_TO_CLIENT:
                         System.out.println("Entering co client");
-                        // TODO
                         decodeCO_CLIENT_TO_CLIENT();
                         System.out.println("Exiting co client");
                         break;
@@ -337,8 +337,6 @@ public class ServerNew {
             return exists[0];
         }
 
-
-        // TODO Ne fonctionne pas encore
         private void decodeCO_CLIENT_TO_CLIENT() {
             if (in.remaining() < Integer.BYTES) {
                 System.err.println(" E_CO_CLIENT_TO_CLIENT in < Int");
