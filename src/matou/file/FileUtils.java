@@ -32,7 +32,7 @@ public class FileUtils {
         }
         Long size = Files.size(path);
         if (size > MAX_SIZE) {
-            System.out.println("Le fichier " + name + " est trop gros");
+            System.out.println("Le fichier " + name + " est trop gros, taille maximal : " + MAX_SIZE / 1000000 + "Mo");
             return null;
         }
         byte[] buffer = Files.readAllBytes(path);

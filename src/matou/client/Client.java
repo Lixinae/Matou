@@ -832,7 +832,7 @@ public class Client {
                         + "/all monMessage pour envoyer un message a tout les clients\n"
                         + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
                         + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
-                        + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo \n"
+                        + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo , taille maximal 50Mo\n"
                         + "/friends affiche la liste des personnes avec qui on est connecter\n"
                         + "/clients affiche la liste des clients connecter au serveur\n"
                         + "/exit pour quittez la messagerie");
