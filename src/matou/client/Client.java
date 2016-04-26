@@ -48,7 +48,7 @@ public class Client {
     private boolean canAccept = false;
     private boolean end = false;
 
-    public Client(String host, int port) throws IOException {
+    private Client(String host, int port) throws IOException {
 
         mapClient = new ConcurrentHashMap<>();
         friends = new ConcurrentHashMap<>();

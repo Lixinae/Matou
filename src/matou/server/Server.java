@@ -26,7 +26,7 @@ public class Server {
     private final Set<SelectionKey> selectedKeys;
     private final HashMap<SocketChannel, ClientInfo> clientMap = new HashMap<>();
 
-    public Server(int port) throws IOException {
+    private Server(int port) throws IOException {
         serverSocketChannel = ServerSocketChannel.open();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(port);
         serverSocketChannel.bind(inetSocketAddress);
@@ -40,7 +40,7 @@ public class Server {
 
     /**
      * @param args Argument
-     * @throws IOException S'il y a une IO Exception
+     * @throws IOException Si le accept a jeter une exception , on remonte et on sort du programme
      */
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {

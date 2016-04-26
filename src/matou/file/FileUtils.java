@@ -19,7 +19,7 @@ public class FileUtils {
      * Lis le contenu du fichier en entree et stocke tout dans un bytebuffer qu'on renvoie
      * @param name nom du fichier en entree
      * @return bytebuffer a envoyee
-     * @throws IOException
+     * @throws IOException Si une IOException se produit
      */
     public static ByteBuffer readAndStoreInBuffer(String name) throws IOException {
         Path path = Paths.get(name);
