@@ -447,8 +447,6 @@ public class Client {
                 .putInt(nickname.length()).put(UTF8_charset.encode(nickname));
         buffConnect.flip();
 
-        System.out.println(buffConnect);
-
         Thread tmp = serverClient();
         // tabThreadClient.add(tmp);
         tmp.start();
@@ -489,10 +487,13 @@ public class Client {
     private void sendMessageToClient(String messageToClient, String dest) {
         ByteBuffer buffSend = ByteBuffer.allocate(BUFFER_SIZE);
         buffSend.put(PacketType.M_CLIENT_TO_CLIENT.getValue())
+                .putInt(nickname.length())
+                .put(UTF8_charset.encode(nickname))
                 .putInt(messageToClient.length())
                 .put(UTF8_charset.encode(messageToClient));
         buffSend.flip();
         SendToFriend(dest, buffSend);
+        System.out.println("Message envoyer");
     }
 
     private void SendToFriend(final String destCpy, ByteBuffer buffSend) {
@@ -568,17 +569,26 @@ public class Client {
             int size;
             switch (bb2) {
                 case M_CLIENT_TO_CLIENT:
+                    int sizeName = buffRead.getInt();
+                    ByteBuffer bName = ByteBuffer.allocate(sizeName);
+                    for (int i = 0; i < sizeName; i++) {
+                        bName.put(buffRead.get());
+                    }
+                    bName.flip();
+
                     size = buffRead.getInt();
                     ByteBuffer bMessage = ByteBuffer.allocate(size);
                     for (int i = 0; i < size; i++) {
                         bMessage.put(buffRead.get());
                     }
                     bMessage.flip();
-                    friends.forEach((name, socketFriend) -> {
-                        if (socketFriend.equals(s)) {
-                            System.out.println("[private] from " + name + " : " + UTF8_charset.decode(bMessage));
-                        }
-                    });
+//                    friends.forEach((name, socketFriend) -> {
+//                        if (socketFriend.equals(s)) {
+//                            System.out.println("[private] from " + name + " : " + UTF8_charset.decode(bMessage));
+//                        }
+//                    });
+                    System.out.println("[private] from " + UTF8_charset.decode(bName) + " : " + UTF8_charset.decode(bMessage));
+
                     break;
                 case F_CLIENT_TO_CLIENT:// probleme viens du faite que c'est en thread
                     Thread t = receiveFile(buffRead);

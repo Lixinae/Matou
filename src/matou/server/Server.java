@@ -392,7 +392,7 @@ public class Server {
 
 
                 out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())// -1 -> placeholder
+                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())
                         .putInt(1);
 
                 status = CurrentStatus.END;
@@ -418,7 +418,6 @@ public class Server {
             clientMap.remove(tmp);
         }
 
-        // Fonctionne
         private void decodeD_LIST_CLIENT_CO() {
             encodeR_LIST_CLIENT_CO();
             in.compact();
@@ -466,13 +465,10 @@ public class Server {
         // Fonctionne
         private void decodeE_ADDR_SERV_CLIENT() {
             if (in.remaining() < Integer.BYTES) {
-//                in.compact();
                 return;
             }
             int size = in.getInt();
             if (in.remaining() < size) {
-//                in.position(in.position() - Integer.BYTES);
-//                in.compact();
                 return;
             }
             ByteBuffer tempo = ByteBuffer.allocate(size);
@@ -490,11 +486,9 @@ public class Server {
                 int port = Integer.parseInt(fullChain.substring(splitIndex + 1));
                 adressServer = new InetSocketAddress(host, port);
 
-//                clientMap.values().forEach(System.out::println);
             }
         }
 
-        // Fonctionne
         private void decodeM_ALL() {
 
             if (in.remaining() < Integer.BYTES) {
@@ -550,8 +544,7 @@ public class Server {
         private void doRead(SelectionKey key) throws IOException {
             System.out.println("In READ");
             if (-1 == socketChannel.read(in)) {
-                System.out.println("///////////////////////Closed///////////////////////");
-                System.out.println("Client : " + name + " disconnected");
+                System.out.println("Client : \'" + name + "\' disconnected");
                 isClosed = true;
                 if (in.position() == 0) {
                     clientMap.remove(socketChannel);
