@@ -91,7 +91,7 @@
     </target>
 
 
-    <target name="all" depends="ServerJar,ClientJar,javadoc" description="Create the jar file and the javadoc ">
+    <target name="all" depends="ServerJar,ClientJar,javadoc" description="Create the jar files and the javadoc ">
         <echo message="Generation complete."/>
     </target>
 </project>

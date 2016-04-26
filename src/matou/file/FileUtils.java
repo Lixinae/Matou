@@ -70,20 +70,4 @@ public class FileUtils {
         }
         return true;
     }
-
-    /**
-     * Creer un nouveau byteBuffer en ne gardant que "size" elements du byteBuffer "in"
-     * @param in   Buffer dans lequel on lit
-     * @param size Taille de la zone que l'on veut lire
-     * @return Le nouveau buffer de taille "size" et contenant une partie du buffer In
-     */
-    public static ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
-        ByteBuffer tempo = ByteBuffer.allocate(size);
-        for (int i = 0; i < size; i++) {
-            tempo.put(in.get());
-        }
-        tempo.flip();
-        return tempo;
-    }
-
 }

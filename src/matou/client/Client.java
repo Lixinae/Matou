@@ -91,10 +91,7 @@ public class Client {
         }
     }
 
-    /**
-     *
-     */
-    public void launch() {
+    private void launch() {
         pseudoRegister();
         if (end) {
             return;
@@ -598,13 +595,13 @@ public class Client {
     private Thread receiveFile(ByteBuffer buff) {
         return new Thread(() -> {
             int sizeNameClient = buff.getInt();
-            ByteBuffer buffNameClient = FileUtils.copyPartialBuffer(buff, sizeNameClient);
+            ByteBuffer buffNameClient = copyPartialBuffer(buff, sizeNameClient);
             int sizeFileName = buff.getInt();
-            ByteBuffer buffFileName = FileUtils.copyPartialBuffer(buff, sizeFileName);
+            ByteBuffer buffFileName = copyPartialBuffer(buff, sizeFileName);
             String fileName = UTF8_charset.decode(buffFileName).toString();
             System.out.println("L'utilisateur " + UTF8_charset.decode(buffNameClient) + " vous envoie le fichier " + fileName);
             int sizeFile = buff.getInt();
-            ByteBuffer buffFile = FileUtils.copyPartialBuffer(buff, sizeFile);
+            ByteBuffer buffFile = copyPartialBuffer(buff, sizeFile);
 
             FileUtils.readInBufferAndWriteInFile(buffFile, fileName);
         });
@@ -840,6 +837,15 @@ public class Client {
                 + "/friends affiche la liste des personnes avec qui on est connecter\n"
                 + "/clients affiche la liste des clients connecter au serveur\n"
                 + "/exit pour quittez la messagerie");
+    }
+
+    private ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
+        ByteBuffer tempo = ByteBuffer.allocate(size);
+        for (int i = 0; i < size; i++) {
+            tempo.put(in.get());
+        }
+        tempo.flip();
+        return tempo;
     }
 
     @Override

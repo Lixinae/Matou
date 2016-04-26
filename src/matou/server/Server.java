@@ -57,7 +57,7 @@ public class Server {
     }
 
 
-    public void launch() throws IOException {
+    private void launch() throws IOException {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -136,7 +136,7 @@ public class Server {
             this.value = (byte) value;
         }
 
-        public static PacketType encode(byte b) {
+        private static PacketType encode(byte b) {
             for (PacketType p : PacketType.values()) {
                 if (p.getValue() == b) {
                     return p;
@@ -367,12 +367,10 @@ public class Server {
             destBuff.flip();
             String dest = UTF8_charset.decode(destBuff).toString();
 
-
-            // TODO Peut etre des changement à faire ici
             if (!findClientInMap(dest)) {
                 in.compact();
                 out = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())// -1 -> placeholder
+                out.put(PacketType.R_CO_CLIENT_TO_CLIENT.getValue())
                         .putInt(0);
 
                 status = CurrentStatus.END;
