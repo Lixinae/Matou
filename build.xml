@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Matou" default="all" basedir=".">
+    <description>
+        Build file for Matou
+    </description>
+
+    <property file="build.properties"/>
+
+    <!--  Create a classpath container which can be later used in the ant task -->
+    <path id="compile.classpath">
+        <pathelement path="${classes.dir}"/>
+    </path>
+
+    <!-- Clean all the generated files -->
+    <target name="clean" description="Removing the all generated files.">
+        <delete dir="${classes.dir}"/>
+        <delete dir="${api.dir}"/>
+        <delete dir="${dest.dir}"/>
+    </target>
+
+    <!-- Cleans the folder and creates the necessary directories -->
+    <target name="init" depends="clean">
+        <mkdir dir="${classes.dir}"/>
+        <mkdir dir="${api.dir}"/>
+        <mkdir dir="${dest.dir}"/>
+        <mkdir dir="${dest.dir}/Client"/>
+        <mkdir dir="${dest.dir}/Server"/>
+    </target>
+
+    <!-- Compile the program -->
+    <target name="compile" depends="init" description="Compilation of all source code.">
+        <javac destdir="${classes.dir}" failonerror="true" includeantruntime="false">
+            <src path="${src.dir}"/>
+            <classpath refid="compile.classpath"/>
+        </javac>
+        <echo message="Compiling done"/>
+    </target>
+
+    <!-- Creates Javadoc -->
+    <target name="javadoc" depends="compile" description="Generate documentation">
+        <javadoc sourcepath="${src.dir}" destdir="${api.dir}" version="true">
+            <classpath refid="compile.classpath"/>
+        </javadoc>
+        <echo message="Java doc created"/>
+    </target>
+
+    <!-- Creates the executable jar file -->
+    <target name="ServerJar" depends="compile" description="Generates Server.jar file in to the dest directory.">
+        <pathconvert property="mf.classpath" pathsep=" ">
+            <path refid="compile.classpath"/>
+        </pathconvert>
+
+        <tstamp/>
+        <manifest file="${dest.dir}/Server/MANIFEST.MF">
+            <attribute name="Built-By" value="${user.name}"/>
+            <attribute name="Built-Date" value="${TODAY}"/>
+            <attribute name="Main-Class" value="${server.class}"/>
+            <attribute name="Class-Path" value="${mf.classpath}"/>
+        </manifest>
+
+        <jar jarfile="${dest.dir}/Server/${server.name}-${app.version}.jar"
+             manifest="${dest.dir}/Server/MANIFEST.MF"
+             duplicate="preserve">
+
+            <fileset dir="${classes.dir}"/>
+        </jar>
+        <echo message="Jar file created"/>
+    </target>
+
+    <!-- Creates the executable jar file -->
+    <target name="ClientJar" depends="compile" description="Generates Client.jar file in to the dest directory.">
+        <pathconvert property="mf.classpath" pathsep=" ">
+            <path refid="compile.classpath"/>
+        </pathconvert>
+
+        <tstamp/>
+        <manifest file="${dest.dir}/Client/MANIFEST.MF">
+            <attribute name="Built-By" value="${user.name}"/>
+            <attribute name="Built-Date" value="${TODAY}"/>
+            <attribute name="Main-Class" value="${client.class}"/>
+            <attribute name="Class-Path" value="${mf.classpath}"/>
+        </manifest>
+
+        <jar jarfile="${dest.dir}/Client/${client.name}-${app.version}.jar"
+             manifest="${dest.dir}/Client/MANIFEST.MF"
+             duplicate="preserve">
+
+            <fileset dir="${classes.dir}"/>
+        </jar>
+        <echo message="Jar file created"/>
+    </target>
+
+
+    <target name="all" depends="ServerJar,ClientJar,javadoc" description="Create the jar file and the javadoc ">
+        <echo message="Generation complete."/>
+    </target>
+</project>

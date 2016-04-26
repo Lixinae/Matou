@@ -67,20 +67,33 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        if (args.length != 2) {
-            usage();
-            return;
-        }
-        Client client;
-        try {
-            client = new Client(args[0], Integer.parseInt(args[1]));
-            client.launch();
-        } catch (IOException e) {
-            System.out.println("Serveur deconnecter");
-            e.printStackTrace();
+        if (args.length == 0) {
+            try {
+                System.out.println("No arguments giving\nStarting client with default values\nhost = localhost\nport = 7777");
+                Client client = new Client("localhost", Integer.parseInt("7777"));
+                client.launch();
+            } catch (IOException e) {
+                System.out.println("Serveur deconnecter");
+                e.printStackTrace();
+            }
+        } else {
+            if (args.length != 2) {
+                usage();
+                return;
+            }
+            try {
+                Client client = new Client(args[0], Integer.parseInt(args[1]));
+                client.launch();
+            } catch (IOException e) {
+                System.out.println("Serveur deconnecter");
+                e.printStackTrace();
+            }
         }
     }
 
+    /**
+     *
+     */
     public void launch() {
         pseudoRegister();
         if (end) {
@@ -97,7 +110,6 @@ public class Client {
     }
 
     private void sendInfoServer() {
-
         String serverBeforeStrip;
         try {
             serverBeforeStrip = serverSocketChannel.getLocalAddress().toString();
@@ -120,7 +132,6 @@ public class Client {
             System.err.println("Erreur lors de l'ecriture d'un paquet du serveur , Serveur deconnecter");
             exitClient();
             end = true;
-//            return;
         }
     }
 
@@ -192,8 +203,7 @@ public class Client {
     // Lit ce que le socketChannel recoit et le stock dans le buffer,
     // Si le buffer est trop petit , la taille est automatiquement augmenter
     // jusqu'a ce qu'il ne soit plus plein
-    private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc)
-            throws IOException {
+    private ByteBuffer readAll(ByteBuffer bbIn, SocketChannel sc) throws IOException {
         while (sc.read(bbIn) != -1) {
             if (bbIn.position() < bbIn.limit()) {
                 return bbIn;
@@ -209,7 +219,7 @@ public class Client {
         return null;
     }
 
-    public void receiveServer() {
+    private void receiveServer() {
         long deb = System.currentTimeMillis();
         ByteBuffer buffByte;
         Thread threadSend = threadSend();
@@ -238,7 +248,6 @@ public class Client {
                 return;
             }
 
-
             buffByte.flip();
             while (buffByte.hasRemaining()) {
                 Byte b = buffByte.get();
@@ -264,7 +273,6 @@ public class Client {
             buffByte.compact();
         }
     }
-
 
     private Thread threadRead() {
         return new Thread(() -> {
@@ -366,7 +374,6 @@ public class Client {
         }
     }
 
-    //changer poll en polltime et enlever le sleep(1) de la fonction precedente
     private void send() throws InterruptedException {
         String arg0, arg1;
         if ((arg0 = queueAll.poll(50, TimeUnit.MILLISECONDS)) != null) {
@@ -819,23 +826,20 @@ public class Client {
     }
 
     private void endAllThread() {
-        // System.out.println("Killing all living threads");
         tabThreadClient.forEach(Thread::interrupt);
-        // System.out.println("Exiting program");
     }
 
     private void listeCommande() {
-        System.out
-                .println("Voici les commandes utilisateur :\n"
-                        + "/commandes pour lister les commande\n"
-                        + "/w pseudo message pour envoyer un message a pseudo\n"
-                        + "/all monMessage pour envoyer un message a tout les clients\n"
-                        + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
-                        + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
-                        + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo , taille maximal 50Mo\n"
-                        + "/friends affiche la liste des personnes avec qui on est connecter\n"
-                        + "/clients affiche la liste des clients connecter au serveur\n"
-                        + "/exit pour quittez la messagerie");
+        System.out.println("Voici les commandes utilisateur :\n"
+                + "/commandes pour lister les commande\n"
+                + "/w pseudo message pour envoyer un message a pseudo\n"
+                + "/all monMessage pour envoyer un message a tout les clients\n"
+                + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
+                + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
+                + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo , taille maximal 50Mo\n"
+                + "/friends affiche la liste des personnes avec qui on est connecter\n"
+                + "/clients affiche la liste des clients connecter au serveur\n"
+                + "/exit pour quittez la messagerie");
     }
 
     @Override

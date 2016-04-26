@@ -16,6 +16,7 @@ public class FileUtils {
 
 
     /**
+     * Lis le contenu du fichier en entree et stocke tout dans un bytebuffer qu'on renvoie
      * @param name nom du fichier en entree
      * @return bytebuffer a envoyee
      * @throws IOException
@@ -43,6 +44,7 @@ public class FileUtils {
     }
 
     /**
+     * Lis le contenu du byteBuffer en entree et ecrit dans un fichier ce contenu
      * @param byteBuffer buffer de reception des donnees
      * @param filename   nom du fichier voulu en sortie
      * @return un boolean qui indique si on a bien tout ecrit ou non
@@ -70,6 +72,7 @@ public class FileUtils {
     }
 
     /**
+     * Creer un nouveau byteBuffer en ne gardant que "size" elements du byteBuffer "in"
      * @param in   Buffer dans lequel on lit
      * @param size Taille de la zone que l'on veut lire
      * @return Le nouveau buffer de taille "size" et contenant une partie du buffer In
