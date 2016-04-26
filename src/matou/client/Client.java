@@ -21,8 +21,7 @@ public class Client {
     private final static Charset UTF8_charset = Charset.forName("UTF8");
 
     /*
-     * Le temps que doit attendre le programme entre deux actualisation de la
-     * liste
+     * Le temps que doit attendre le programme entre deux actualisation de la liste
      */
     private final static long ACTU_LIST_TIME_MILLIS = 1000 * 5;
     private final static int BUFFER_SIZE = 1024;
@@ -836,15 +835,15 @@ public class Client {
 
     private void listeCommande() {
         System.out.println("Voici les commandes utilisateur :\n"
-                + "/commandes pour lister les commande\n"
-                + "/w pseudo message pour envoyer un message a pseudo\n"
-                + "/all monMessage pour envoyer un message a tout les clients\n"
-                + "/connect pseudo pour demander a vous connecter au client nomme pseudo\n"
-                + "/accept pseudo pour accepter la connection au client nomme pseudo\n"
-                + "/file pseudo nomDuFichier pour envoyer un fichier a pseudo , taille maximal 50Mo\n"
-                + "/friends affiche la liste des personnes avec qui on est connecter\n"
-                + "/clients affiche la liste des clients connecter au serveur\n"
-                + "/exit pour quittez la messagerie");
+                + "/commandes : Lister les commandes\n"
+                + "/w pseudo message : Envoyer un message a pseudo\n"
+                + "/all monMessage : Envoyer monMessage a tout les clients\n"
+                + "/connect pseudo : Demande de connection au client nomme pseudo\n"
+                + "/accept pseudo : Accepter la connection au client nomme pseudo\n"
+                + "/file pseudo nomDuFichier : Envoyer un fichier a pseudo , taille maximal 50Mo\n"
+                + "/friends : Affiche la liste des personnes avec qui on est connecter\n"
+                + "/clients : Affiche la liste des clients connecter au serveur\n"
+                + "/exit : Quitter le programme");
     }
 
     private ByteBuffer copyPartialBuffer(ByteBuffer in, int size) {
