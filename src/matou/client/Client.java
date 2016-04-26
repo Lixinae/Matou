@@ -837,7 +837,7 @@ public class Client {
         System.out.println("Voici les commandes utilisateur :\n"
                 + "/commandes : Lister les commandes\n"
                 + "/w pseudo message : Envoyer un message a pseudo\n"
-                + "/all monMessage : Envoyer monMessage a tout les clients\n"
+                + "/all monMessage : Envoyer monMessage a tous les clients\n"
                 + "/connect pseudo : Demande de connection au client nomme pseudo\n"
                 + "/accept pseudo : Accepter la connection au client nomme pseudo\n"
                 + "/file pseudo nomDuFichier : Envoyer un fichier a pseudo , taille maximal 50Mo\n"
