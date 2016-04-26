@@ -224,9 +224,11 @@ public class Client {
         threadSend.start();
         Thread threadRead = threadRead();
         tabThreadClient.add(threadRead);
+
         threadRead.start();
         while (!Thread.interrupted()) {
             if (end) {
+                exitClient();
                 return;
             }
 
@@ -298,7 +300,8 @@ public class Client {
                 try {
                     send();
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    exitClient();
+                    end = true;
                 }
             }
         });
@@ -448,7 +451,6 @@ public class Client {
         buffConnect.flip();
 
         Thread tmp = serverClient();
-        // tabThreadClient.add(tmp);
         tmp.start();
         try {
             socket.write(buffConnect);
@@ -582,15 +584,11 @@ public class Client {
                         bMessage.put(buffRead.get());
                     }
                     bMessage.flip();
-//                    friends.forEach((name, socketFriend) -> {
-//                        if (socketFriend.equals(s)) {
-//                            System.out.println("[private] from " + name + " : " + UTF8_charset.decode(bMessage));
-//                        }
-//                    });
+
                     System.out.println("[private] from " + UTF8_charset.decode(bName) + " : " + UTF8_charset.decode(bMessage));
 
                     break;
-                case F_CLIENT_TO_CLIENT:// probleme viens du faite que c'est en thread
+                case F_CLIENT_TO_CLIENT:
                     Thread t = receiveFile(buffRead);
                     tabThreadClient.add(t);
                     t.start();
@@ -778,7 +776,7 @@ public class Client {
                         // /////////////////////////////////////////////////////////
                         else if (words[0].equals("/exit")) {
                             exitClient();
-                            break;
+                            return;
                         }
                         // /////////////////////////////////////////////////////////
                         else {
@@ -799,7 +797,7 @@ public class Client {
             System.err.println("Erreur lors de la deconnection, serveur deconnecter");
         }
         end = true;
-        // scan.close();
+        scan.close();
         endAllThread();
     }
 

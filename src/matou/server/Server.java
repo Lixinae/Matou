@@ -412,9 +412,17 @@ public class Server {
 
         private void decodeDC_PSEUDO() {
             SocketChannel tmp = socketChannel;
-            System.out.println("Disconnecting client : " + clientMap.get(tmp));
-            // On remet à begin parce qu'il n'y a rien a écrire dans ce cas.
-            status = CurrentStatus.BEGIN;
+            System.out.println("Client : \'" + name + "\' disconnected");
+            isClosed = true;
+            if (in.position() == 0) {
+                clientMap.remove(socketChannel);
+                try {
+                    socketChannel.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
             clientMap.remove(tmp);
         }
 
@@ -462,7 +470,6 @@ public class Server {
             return total[0];
         }
 
-        // Fonctionne
         private void decodeE_ADDR_SERV_CLIENT() {
             if (in.remaining() < Integer.BYTES) {
                 return;
@@ -540,7 +547,6 @@ public class Server {
             status = CurrentStatus.END;
         }
 
-        // Pas de readAll en non bloquant
         private void doRead(SelectionKey key) throws IOException {
             System.out.println("In READ");
             if (-1 == socketChannel.read(in)) {
@@ -576,7 +582,7 @@ public class Server {
             key.interestOps(getInterestKey());
         }
 
-        public int getInterestKey() {
+        private int getInterestKey() {
             int interestKey = 0;// initialize
             if (out.position() > 0) {
                 interestKey = interestKey | SelectionKey.OP_WRITE;
@@ -587,11 +593,11 @@ public class Server {
             return interestKey;
         }
 
-        public String getName() {
+        private String getName() {
             return name;
         }
 
-        public InetSocketAddress getAdressServer() {
+        private InetSocketAddress getAdressServer() {
             return adressServer;
         }
 
