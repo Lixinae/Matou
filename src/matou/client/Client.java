@@ -15,7 +15,15 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
+/**
+ * 
+ * @author kev
+ * la classe Client est utilise en synergie avec la classe Server,
+ * elle represente l'interface sur terminale qu'utilise un client
+ * pour communiquer avec les autres clients.
+ * il se lance grace à son main qui construit le client et
+ * lance sa fonction principale launch.
+ */
 public class Client {
 
     private final static Charset UTF8_charset = Charset.forName("UTF8");
@@ -66,31 +74,36 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        if (args.length == 0) {
-            try {
-                System.out.println("No arguments giving\nStarting client with default values\nhost = localhost\nport = 7777");
-                Client client = new Client("localhost", Integer.parseInt("7777"));
-                client.launch();
-            } catch (IOException e) {
-                System.out.println("Serveur deconnecter");
-                e.printStackTrace();
-            }
-        } else {
-            if (args.length != 2) {
-                usage();
-                return;
-            }
-            try {
-                Client client = new Client(args[0], Integer.parseInt(args[1]));
-                client.launch();
-            } catch (IOException e) {
-                System.out.println("Serveur deconnecter");
-                e.printStackTrace();
-            }
-        }
-    }
+		String host = "localhost";
+		int port = 7777;
 
-    private void launch() {
+		if (args.length != 0) {
+			if (args.length != 2) {
+				usage();
+				return;
+			}
+			host = args[0];
+			port = Integer.parseInt(args[1]);
+		}
+		else{
+			System.out.println("No arguments giving\nStarting client with default values\nhost = localhost\nport = 7777");
+		}
+		try {
+			Client client = new Client(host, port);
+			client.launch();
+		} catch (IOException e) {
+			System.out.println("Serveur deconnecter");
+			e.printStackTrace();
+		}
+
+	}
+               
+/**
+ * cette fonction lance l'interface client qui permet 
+ * la bonne synchronisation des messages entre le client
+ * et le serveur et ses autres clients.
+ */
+    public void launch() {
         pseudoRegister();
         if (end) {
             return;
