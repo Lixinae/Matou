@@ -16,6 +16,15 @@ import java.util.Set;
  * Project :Matou
  * Created by Narex on 09/03/2016.
  */
+
+/**
+ * @author Narex
+ *         <p>
+ *         La classe server cré un serveur TCP non bloquant, les client peuvent se connecter dessus et ainsi recuperer les
+ *         informations des autres clients afin de pouvoir se connecter , discuter et s'envoyer des fichiers entres eux.
+ *         Il se lance grace a son main qui construit le serveur et
+ *         lance sa fonction principale launch.
+ */
 public class Server {
 
     private final static int BUFF_SIZE = 1024;
@@ -38,10 +47,6 @@ public class Server {
         System.out.println("java matou.server.Server 7777");
     }
 
-    /**
-     * @param args Argument
-     * @throws IOException Si le accept a jeter une exception , on remonte et on sort du programme
-     */
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
             System.out.println("No arguments giving\nStarting Server with default values\nport = 7777");
